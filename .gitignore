@@ -1,0 +1,7 @@
+checkpoint_*
+g_*
+__pycache__
+.pyc
+.png
+.zip
+
