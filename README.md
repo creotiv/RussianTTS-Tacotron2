@@ -7,6 +7,8 @@ This implementation includes **distributed** and **automatic mixed precision** s
 and uses the [RUSLAN dataset](https://ruslan-corpus.github.io/).
 
 Distributed and Automatic Mixed Precision support relies on NVIDIA's [Apex] and [AMP].
+## Generated samples
+https://soundcloud.com/andrey-nikishaev/sets/russian-tts-nvidia-tacotron2
 
 ## Pre-requisites
 1. NVIDIA GPU + CUDA cuDNN
