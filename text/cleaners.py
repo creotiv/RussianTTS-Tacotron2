@@ -14,9 +14,11 @@ hyperparameter. Some cleaners are English-specific. You'll typically want to use
 
 import re
 from unidecode import unidecode
-from .numbers import normalize_numbers
+from .numb import normalize_numbers
 from transliterate import translit
+from .rudict import RuDict
 
+rdc = RuDict('rudict.npy')
 
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r'\s+')
@@ -79,6 +81,9 @@ def clean_end(txt):
         txt += '.'
     return txt
 
+def accent(txt):
+  return rdc.text_to_text(txt)
+
 def basic_cleaners(text):
   '''Basic pipeline that lowercases and collapses whitespace without transliteration.'''
   text = lowercase(text)
@@ -96,8 +101,9 @@ def transliteration_ua_cleaners(text):
 
 def transliteration_cleaners(text):
   '''Pipeline for non-English text that transliterates to ASCII.'''
-  text = convert_to_ascii(text)
   text = lowercase(text)
+  # text = accent(text)
+  text = convert_to_ascii(text)
   text = collapse_whitespace(text)
   text = clean_end(text)
   return text

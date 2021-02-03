@@ -5,6 +5,8 @@ from torch import nn
 from torch.nn import functional as F
 from layers import ConvNorm, LinearNorm
 from utils import to_gpu, get_mask_from_lengths
+import contextlib
+import numpy as np
 
 
 class LocationLayer(nn.Module):
@@ -86,6 +88,18 @@ class Attention(nn.Module):
         return attention_context, attention_weights
 
 
+
+@contextlib.contextmanager
+def temp_seed(seed=None):
+    if seed is not None:
+        state = np.random.get_state()
+        np.random.seed(seed)
+    try:
+        yield
+    finally:
+        if seed is not None:
+            np.random.set_state(state)
+
 class Prenet(nn.Module):
     def __init__(self, in_dim, sizes):
         super(Prenet, self).__init__()
@@ -97,7 +111,14 @@ class Prenet(nn.Module):
     def forward(self, x):
         for linear in self.layers:
             x = F.relu(linear(x))
-            x = F.dropout(x, p=0.5, training=True)
+            if self.training:
+                x = F.dropout(x, p=0.5, training=True)
+            else:
+                h,w = x.shape
+                b = np.expand_dims(np.random.binomial(1, p=0.5, size=w),axis=0)
+                b = torch.tensor(b, dtype=torch.float16).to(x.device)
+                x = x * b * (1/0.5)
+
         return x
 
 
@@ -416,7 +437,7 @@ class Decoder(nn.Module):
 
         return mel_outputs, gate_outputs, alignments
 
-    def inference(self, memory):
+    def inference(self, memory, fixed=None):
         """ Decoder inference
         PARAMS
         ------
@@ -433,21 +454,22 @@ class Decoder(nn.Module):
         self.initialize_decoder_states(memory, mask=None)
 
         mel_outputs, gate_outputs, alignments = [], [], []
-        while True:
-            decoder_input = self.prenet(decoder_input)
-            mel_output, gate_output, alignment = self.decode(decoder_input)
+        with temp_seed(fixed):
+            while True:
+                decoder_input = self.prenet(decoder_input)
+                mel_output, gate_output, alignment = self.decode(decoder_input)
 
-            mel_outputs += [mel_output.squeeze(1)]
-            gate_outputs += [gate_output]
-            alignments += [alignment]
+                mel_outputs += [mel_output.squeeze(1)]
+                gate_outputs += [gate_output]
+                alignments += [alignment]
 
-            if torch.sigmoid(gate_output.data) > self.gate_threshold:
-                break
-            elif len(mel_outputs) == self.max_decoder_steps:
-                print("Warning! Reached max decoder steps")
-                break
+                if torch.sigmoid(gate_output.data) > self.gate_threshold:
+                    break
+                elif len(mel_outputs) == self.max_decoder_steps:
+                    print("Warning! Reached max decoder steps")
+                    break
 
-            decoder_input = mel_output
+                decoder_input = mel_output
 
         mel_outputs, gate_outputs, alignments = self.parse_decoder_outputs(
             mel_outputs, gate_outputs, alignments)
@@ -515,11 +537,11 @@ class Tacotron2(nn.Module):
             [mel_outputs, mel_outputs_postnet, gate_outputs, alignments],
             output_lengths)
 
-    def inference(self, inputs):
+    def inference(self, inputs, fixed=None):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)
         encoder_outputs = self.encoder.inference(embedded_inputs)
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
-            encoder_outputs)
+            encoder_outputs, fixed=fixed)
 
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet

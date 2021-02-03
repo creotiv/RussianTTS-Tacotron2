@@ -1,7 +1,9 @@
 checkpoint_*
 g_*
 __pycache__
-.pyc
-.png
-.zip
-
+*.pyc
+*.png
+*.zip
+.ipynb_checkpoints
+*.npy
+outdir
