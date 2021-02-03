@@ -437,7 +437,7 @@ class Decoder(nn.Module):
 
         return mel_outputs, gate_outputs, alignments
 
-    def inference(self, memory, fixed=None):
+    def inference(self, memory, seed=None):
         """ Decoder inference
         PARAMS
         ------
@@ -454,7 +454,7 @@ class Decoder(nn.Module):
         self.initialize_decoder_states(memory, mask=None)
 
         mel_outputs, gate_outputs, alignments = [], [], []
-        with temp_seed(fixed):
+        with temp_seed(seed):
             while True:
                 decoder_input = self.prenet(decoder_input)
                 mel_output, gate_output, alignment = self.decode(decoder_input)
@@ -537,11 +537,11 @@ class Tacotron2(nn.Module):
             [mel_outputs, mel_outputs_postnet, gate_outputs, alignments],
             output_lengths)
 
-    def inference(self, inputs, fixed=None):
+    def inference(self, inputs, seed=None):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)
         encoder_outputs = self.encoder.inference(embedded_inputs)
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
-            encoder_outputs, fixed=fixed)
+            encoder_outputs, seed=seed)
 
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet

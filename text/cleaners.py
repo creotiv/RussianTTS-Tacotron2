@@ -18,7 +18,7 @@ from .numb import normalize_numbers
 from transliterate import translit
 from .rudict import RuDict
 
-rdc = RuDict('rudict.npy')
+# rdc = RuDict('rudict.npy')
 
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r'\s+')
