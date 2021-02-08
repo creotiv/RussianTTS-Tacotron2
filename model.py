@@ -613,7 +613,6 @@ class Tacotron2(nn.Module):
             mel_mask = mask.expand(self.n_mel_channels, mask.size(0), mask.size(1))
             mel_mask = mel_mask.permute(1, 0, 2)
 
-            print([output.shape for output in outputs if output is not None])
             if outputs[0] is not None:
                 float_mask = (~mask).float().unsqueeze(1)
                 outputs[0] = outputs[0] * float_mask

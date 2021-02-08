@@ -2,7 +2,8 @@ import os
 import time
 import argparse
 import math
-from numpy import finfo
+import random
+import numpy as np
 
 import torch
 from distributed import apply_gradient_allreduce
@@ -73,7 +74,7 @@ def prepare_directories_and_logger(output_directory, log_directory, rank):
 def load_model(hparams):
     model = Tacotron2(hparams).cuda()
     if hparams.fp16_run:
-        model.decoder.attention_layer.score_mask_value = finfo('float16').min
+        model.decoder.attention_layer.score_mask_value = np.finfo('float16').min
 
     if hparams.distributed_run:
         model = apply_gradient_allreduce(model)
@@ -165,6 +166,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
 
     torch.manual_seed(hparams.seed)
     torch.cuda.manual_seed(hparams.seed)
+    random.seed(hparams.seed)
+    np.random.seed(hparams.seed)
 
     model = load_model(hparams)
     learning_rate = hparams.learning_rate
