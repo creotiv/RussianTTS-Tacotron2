@@ -6,7 +6,7 @@ import torch.utils.data
 
 import layers
 from utils import load_wav_to_torch, load_filepaths_and_text
-from text import text_to_sequence
+from text import text_to_sequence, sequence_to_ctc_sequence
 
 
 class TextMelLoader(torch.utils.data.Dataset):
@@ -40,9 +40,9 @@ class TextMelLoader(torch.utils.data.Dataset):
     def get_mel_text_pair(self, audiopath_and_text):
         # separate filename and text
         audiopath, text = audiopath_and_text[0], audiopath_and_text[2].strip() or audiopath_and_text[1].strip()
-        text = self.get_text(text)
+        text, ctc_text = self.get_text(text)
         mel = self.get_mel(os.path.join(self.ds_path,'wavs',audiopath+'.wav'))
-        return (text, mel)
+        return (text, ctc_text, mel)
 
     def get_mel(self, filename):
         if not os.path.exists(filename+'.np'):
@@ -65,8 +65,10 @@ class TextMelLoader(torch.utils.data.Dataset):
         return melspec
 
     def get_text(self, text):
-        text_norm = torch.IntTensor(text_to_sequence(text, self.text_cleaners))
-        return text_norm
+        sequence = text_to_sequence(text, self.text_cleaners)
+        text_norm = torch.IntTensor(sequence)
+        ctc_text_norm = torch.IntTensor(sequence_to_ctc_sequence(sequence))
+        return text_norm, ctc_text_norm
 
     def __getitem__(self, index):
         return self.get_mel_text_pair(self.audiopaths_and_text[index])
@@ -99,9 +101,18 @@ class TextMelCollate():
             text = batch[ids_sorted_decreasing[i]][0]
             text_padded[i, :text.size(0)] = text
 
+        max_ctc_txt_len = max([len(x[1]) for x in batch])
+        ctc_text_paded = torch.LongTensor(len(batch), max_ctc_txt_len)
+        ctc_text_paded .zero_()
+        ctc_text_lengths = torch.LongTensor(len(batch))
+        for i in range(len(ids_sorted_decreasing)):
+            ctc_text = batch[ids_sorted_decreasing[i]][1]
+            ctc_text_paded[i, :ctc_text.size(0)] = ctc_text
+            ctc_text_lengths[i] = ctc_text.size(0)
+
         # Right zero-pad mel-spec
-        num_mels = batch[0][1].size(0)
-        max_target_len = max([x[1].size(1) for x in batch])
+        num_mels = batch[0][2].size(0)
+        max_target_len = max([x[2].size(1) for x in batch])
         if max_target_len % self.n_frames_per_step != 0:
             max_target_len += self.n_frames_per_step - max_target_len % self.n_frames_per_step
             assert max_target_len % self.n_frames_per_step == 0
@@ -113,10 +124,10 @@ class TextMelCollate():
         gate_padded.zero_()
         output_lengths = torch.LongTensor(len(batch))
         for i in range(len(ids_sorted_decreasing)):
-            mel = batch[ids_sorted_decreasing[i]][1]
+            mel = batch[ids_sorted_decreasing[i]][2]
             mel_padded[i, :, :mel.size(1)] = mel
             gate_padded[i, mel.size(1)-1:] = 1
             output_lengths[i] = mel.size(1)
 
         return text_padded, input_lengths, mel_padded, gate_padded, \
-            output_lengths
+            output_lengths, ctc_text_paded, ctc_text_lengths

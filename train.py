@@ -147,7 +147,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         logger.log_validation(val_loss, model, y, y_pred, iteration)
 
 
-def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
+def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_mmi_layers, n_gpus,
           rank, group_name, hparams):
     """Training and validation logging results to tensorboard and stdout
 
@@ -190,9 +190,14 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
     iteration = 0
     epoch_offset = 0
     if checkpoint_path is not None:
-        if warm_start:
+        if warm_start or ignore_mmi_layers:
+            layers = []
+            if warm_start:
+                layers += hparams.ignore_layers
+            if ignore_mmi_layers:
+                layers += hparams.mmi_ignore_layers
             model = warm_start_model(
-                checkpoint_path, model, hparams.ignore_layers)
+                checkpoint_path, model, layers)
         else:
             model, optimizer, _learning_rate, iteration = load_checkpoint(
                 checkpoint_path, model, optimizer)
@@ -216,6 +221,28 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
             y_pred = model(x)
 
             loss = criterion(y_pred, y)
+
+            if model.mi is not None:
+                # transpose to [b, T, dim]
+                decoder_outputs = y_pred[0].transpose(2, 1)
+                ctc_text, ctc_text_lengths, aco_lengths = x[-2], x[-1], x[4]
+                taco_loss = loss
+                mi_loss = model.mi(decoder_outputs, ctc_text, aco_lengths, ctc_text_lengths)
+                loss = loss + mi_loss
+            else:
+                taco_loss = loss
+                mi_loss = torch.tensor([-1.0])
+
+            if hparams.distributed_run:
+                reduced_loss = reduce_tensor(loss.data, n_gpus).item()
+                taco_loss = reduce_tensor(taco_loss.data, n_gpus).item()
+                mi_loss = reduce_tensor(mi_loss.data, n_gpus).item()
+            else:
+                reduced_loss = loss.item()
+                taco_loss = taco_loss.item()
+                mi_loss = mi_loss.item()
+
+
             if hparams.distributed_run:
                 reduced_loss = reduce_tensor(loss.data, n_gpus).item()
             else:
@@ -238,10 +265,11 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
 
             if not is_overflow and rank == 0:
                 duration = time.perf_counter() - start
-                print("Train loss {} {:.6f} Grad Norm {:.6f} {:.2f}s/it".format(
-                    iteration, reduced_loss, grad_norm, duration))
+                print("Train loss {} {:.4f} mi_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
+                    iteration, taco_loss, mi_loss, grad_norm, duration))
                 logger.log_training(
-                    reduced_loss, grad_norm, learning_rate, duration, iteration)
+                    reduced_loss, taco_loss, mi_loss, grad_norm,
+                    learning_rate, duration, iteration)
 
             if not is_overflow and (iteration % hparams.iters_per_checkpoint == 0):
                 validate(model, criterion, valset, iteration,
@@ -266,6 +294,8 @@ if __name__ == '__main__':
                         required=False, help='checkpoint path')
     parser.add_argument('--warm_start', action='store_true',
                         help='load model weights only, ignore specified layers')
+    parser.add_argument('--ignore-mmi-layers', action='store_true',
+                        help='load model weights only, ignore specified layers')
     parser.add_argument('--n_gpus', type=int, default=1,
                         required=False, help='number of gpus')
     parser.add_argument('--rank', type=int, default=0,
@@ -283,9 +313,11 @@ if __name__ == '__main__':
 
     print("FP16 Run:", hparams.fp16_run)
     print("Dynamic Loss Scaling:", hparams.dynamic_loss_scaling)
+    print("Use MMI:", hparams.use_mmi)
     print("Distributed Run:", hparams.distributed_run)
     print("cuDNN Enabled:", hparams.cudnn_enabled)
     print("cuDNN Benchmark:", hparams.cudnn_benchmark)
+    
 
     train(args.output_directory, args.log_directory, args.checkpoint_path,
-          args.warm_start, args.n_gpus, args.rank, args.group_name, hparams)
+          args.warm_start, args.ignore_mmi_layers, args.n_gpus, args.rank, args.group_name, hparams)

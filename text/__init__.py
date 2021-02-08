@@ -1,12 +1,13 @@
 """ from https://github.com/keithito/tacotron """
 import re
 from text import cleaners
-from text.symbols import symbols
+from text.symbols import symbols, ctc_symbols
 
 
 # Mappings from symbol to numeric ID and vice versa:
 _symbol_to_id = {s: i for i, s in enumerate(symbols)}
 _id_to_symbol = {i: s for i, s in enumerate(symbols)}
+_ctc_symbole_to_id = {s: i for i, s in enumerate(ctc_symbols)}
 
 # Regular expression matching text enclosed in curly braces:
 _curly_re = re.compile(r'(.*?)\{(.+?)\}(.*)')
@@ -39,6 +40,8 @@ def text_to_sequence(text, cleaner_names):
 
   return sequence
 
+def sequence_to_ctc_sequence(sequence):
+  return [_ctc_symbole_to_id[_id_to_symbol[s]] for s in sequence if _id_to_symbol[s] in ctc_symbols]
 
 def sequence_to_text(sequence):
   '''Converts a sequence of IDs back to a string'''

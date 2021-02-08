@@ -20,6 +20,7 @@ def create_hparams(hparams_string=None, verbose=False):
         cudnn_enabled=True,
         cudnn_benchmark=False,
         ignore_layers=['embedding.weight'],
+        mmi_ignore_layers=["decoder.linear_projection.linear_layer.weight", "decoder.linear_projection.linear_layer.bias", "decoder.gate_layer.linear_layer.weight"],
 
         ################################
         # Data Parameters             #
@@ -61,6 +62,7 @@ def create_hparams(hparams_string=None, verbose=False):
         gate_threshold=0.5,
         p_attention_dropout=0.1,
         p_decoder_dropout=0.1,
+        p_teacher_forcing=1.0,
 
         use_mmi=True,
 
