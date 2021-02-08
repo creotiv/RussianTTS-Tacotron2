@@ -148,6 +148,24 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         print("Validation loss {}: {:9f}  ".format(iteration, val_loss))
         logger.log_validation(val_loss, model, y, y_pred, iteration)
 
+def calculate_global_mean(data_loader, global_mean_npy):
+    if global_mean_npy and os.path.exists(global_mean_npy):
+        global_mean = np.load(global_mean_npy)
+        return to_gpu(torch.tensor(global_mean))
+    sums = []
+    frames = []
+    print('calculating global mean...')
+    for i, batch in enumerate(data_loader):
+        (text_padded, input_lengths, mel_padded, gate_padded,
+         output_lengths, ctc_text, ctc_text_lengths) = batch
+        # padded values are 0.
+        sums.append(mel_padded.double().sum(dim=(0, 2)))
+        frames.append(output_lengths.double().sum())
+    global_mean = sum(sums) / sum(frames)
+    global_mean = to_gpu(global_mean.float())
+    if global_mean_npy:
+        np.save(global_mean_npy, global_mean.cpu().numpy())
+    return global_mean
 
 def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_mmi_layers, n_gpus,
           rank, group_name, hparams):
@@ -189,6 +207,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
         output_directory, log_directory, rank)
 
     train_loader, valset, collate_fn = prepare_dataloaders(hparams)
+    if hparams.drop_frame_rate > 0.:
+        global_mean = calculate_global_mean(train_loader, hparams.global_mean_npy)
+        hparams.global_mean = global_mean
+
 
     # Load checkpoint if one exists
     iteration = 0
