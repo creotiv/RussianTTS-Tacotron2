@@ -523,14 +523,14 @@ class Decoder(nn.Module):
         with temp_seed(seed):
             while True:
                 decoder_input = self.prenet(decoder_input)
-                mel_output, gate_output, alignment = self.decode(decoder_input)
+                mel_output, gate_output, alignment, _ = self.decode(decoder_input)
 
                 mel_outputs += [mel_output.squeeze(1)]
                 gate_outputs += [gate_output]
                 alignments += [alignment]
 
-                if decoder_output is not None:
-                    decoder_outputs += [decoder_output.squeeze(1)]
+                # if decoder_output is not None:
+                #     decoder_outputs += [decoder_output.squeeze(1)]
 
                 if not suppress_gate and torch.sigmoid(gate_output.data) > self.gate_threshold:
                     break
