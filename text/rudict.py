@@ -6,6 +6,13 @@ import re
 class RuDict:
     def __init__(self, path):
         self.db = np.load(path, allow_pickle=True).item()
+        vovels = ["у","е","ы","а","о","э","я","и","ю"]
+        kv = dict(zip(vovels,["^","$","#","@","*","$","%","<",">"]))
+        self.tt = {}
+        for i in vovels:
+            for m in vovels:
+                self.tt[i+'*'+m] = i+kv[m]
+        self.tt.update(dict(zip(["у*","е*","ы*","а*","о*","э*","я*","и*","ю*"],["^","$","#","@","*","$","%","<",">"])))
 
     def find(self, name, tries=4):
         l = len(name)
@@ -24,7 +31,10 @@ class RuDict:
             w = w.replace(cl,cl2)
             res.append(w)
         res = ' '.join(res)
-        return res.replace("'", "*")
+        res = res.replace("'", "*")
+        for k,v in self.tt.items():
+            res = res.replace(k,v)
+        return res
 
 
 def preprocess(path, save_path):

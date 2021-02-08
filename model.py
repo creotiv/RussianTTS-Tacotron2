@@ -114,11 +114,10 @@ class Prenet(nn.Module):
             if self.training:
                 x = F.dropout(x, p=0.5, training=True)
             else:
-                h,w = x.shape
+                w = x.numel()
                 b = np.expand_dims(np.random.binomial(1, p=0.5, size=w),axis=0)
-                b = torch.tensor(b, dtype=torch.float16).to(x.device)
+                b = torch.tensor(b, dtype=torch.float16).to(x.device).view(x.shape)
                 x = x * b * (1/0.5)
-
         return x
 
 

@@ -28,9 +28,6 @@ def create_hparams(hparams_string=None, verbose=False):
         dataset_path='/media/creotiv/DATA/DATASETS/RUSL',
         training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train.csv',
         validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val.csv',
-        # dataset_path='/media/creotiv/DATA/DATASETS/rus',
-        # training_files='/media/creotiv/DATA/DATASETS/rus/filelists/train.csv',
-        # validation_files='/media/creotiv/DATA/DATASETS/rus/filelists/val.csv',
         text_cleaners=['transliteration_cleaners'],
 
         ################################
@@ -64,6 +61,8 @@ def create_hparams(hparams_string=None, verbose=False):
         gate_threshold=0.5,
         p_attention_dropout=0.1,
         p_decoder_dropout=0.1,
+
+        use_mmi=True,
 
         # Attention parameters
         attention_rnn_dim=1024,

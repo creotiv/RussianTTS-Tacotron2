@@ -18,7 +18,8 @@ from .numb import normalize_numbers
 from transliterate import translit
 from .rudict import RuDict
 
-# rdc = RuDict('rudict.npy')
+if __file__:
+  rdc = RuDict(os.path.join(os.path.dirname(__file__),'rudict.npy'))
 
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r'\s+')
@@ -102,7 +103,7 @@ def transliteration_ua_cleaners(text):
 def transliteration_cleaners(text):
   '''Pipeline for non-English text that transliterates to ASCII.'''
   text = lowercase(text)
-  # text = accent(text)
+  text = accent(text)
   text = convert_to_ascii(text)
   text = collapse_whitespace(text)
   text = clean_end(text)
