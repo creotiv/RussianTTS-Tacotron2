@@ -64,8 +64,6 @@ def create_hparams(hparams_string=None, verbose=False):
         p_decoder_dropout=0.1,
         p_teacher_forcing=1.0,
 
-        use_mmi=True,
-
         # Attention parameters
         attention_rnn_dim=1024,
         attention_dim=128,
@@ -88,6 +86,17 @@ def create_hparams(hparams_string=None, verbose=False):
         grad_clip_thresh=1.0,
         batch_size=8,
         mask_padding=True  # set model's padded outputs to padded values
+
+        ################################
+        # MMI #
+        ################################
+        use_mmi=True,
+        drop_frame_rate=0.2,
+        use_mmi=True,
+        use_gaf=True,
+        update_gaf_every_n_step=10,
+        max_gaf=0.5,
+        global_mean_npy='ljspeech_global_mean.npy'
     )
 
     if hparams_string:

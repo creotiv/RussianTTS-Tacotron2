@@ -4,7 +4,7 @@ from torch.autograd import Variable
 from torch import nn
 from torch.nn import functional as F
 from layers import ConvNorm, LinearNorm
-from utils import to_gpu, get_mask_from_lengths
+from utils import to_gpu, get_mask_from_lengths, dropout_frame
 import contextlib
 import numpy as np
 import random
@@ -581,8 +581,11 @@ class Tacotron2(nn.Module):
         self.encoder = Encoder(hparams)
         self.decoder = Decoder(hparams)
         self.postnet = Postnet(hparams)
-
+        self.drop_frame_rate = hparams.drop_frame_rate
         self.use_mmi = hparams.use_mmi
+        if self.drop_frame_rate > 0.:
+            # global mean is not used at inference.
+            self.global_mean = getattr(hparams, 'global_mean', None)
         if self.use_mmi:
             vocab_size = len(ctc_symbols)
             decoder_dim = hparams.decoder_rnn_dim
@@ -625,6 +628,10 @@ class Tacotron2(nn.Module):
     def forward(self, inputs):
         text_inputs, text_lengths, mels, max_len, output_lengths, *_ = inputs
         text_lengths, output_lengths = text_lengths.data, output_lengths.data
+
+        if self.drop_frame_rate > 0. and self.training:
+            # mels shape (B, n_mel_channels, T_out),
+            mels = dropout_frame(mels, self.global_mean, output_lengths, self.drop_frame_rate)
 
         embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
 
