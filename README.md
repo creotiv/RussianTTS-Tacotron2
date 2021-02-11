@@ -17,6 +17,7 @@ https://soundcloud.com/andrey-nikishaev/sets/russian-tts-nvidia-tacotron2
     - Can't make it work as showed in paper
     - DGA still gives better results, and much cleaner
 * Added Russian text preparation with simple stress dictionary (za'mok i zamo'k)
+* Using HiFi GAN
 
 ## Pre-requisites
 1. NVIDIA GPU + CUDA cuDNN
@@ -46,7 +47,7 @@ By default, the dataset dependent text embedding layers are [ignored]
 
 ## Inference demo
 1. Download our published [Ruslan Model] or [LJ Speech model]
-2. Download published [HiFI-GAN Model] (Universal model recommended for non-English languages)
+2. Download published [HiFi-GAN Model] (Universal model recommended for non-English languages)
 3. `jupyter notebook --ip=127.0.0.1 --port=31337`
 4. Load inference.ipynb 
 
@@ -62,7 +63,7 @@ This implementation uses code from the following repos: [Nvidia/Tacotron2](https
 
 
 [Ruslan Model]: https://drive.google.com/file/d/1CCC0_v3cL5qrLFBsSBuNE3_QgZfDH7wl/view?usp=sharing
-[HiFI-GAN Model]: https://drive.google.com/drive/folders/1-eEYTB5Av9jNql0WGBlRoi-WH2J7bp5Y
+[HiFi-GAN Model]: https://drive.google.com/drive/folders/1-eEYTB5Av9jNql0WGBlRoi-WH2J7bp5Y
 [LJ Speech model]: https://drive.google.com/file/d/1c5ZTuT7J08wLUoVZ2KkUs_VdZuJ86ZqA/view?usp=sharing
 [pytorch 1.0]: https://github.com/pytorch/pytorch#installation
 [ignored]: https://github.com/NVIDIA/tacotron2/blob/master/hparams.py#L22
