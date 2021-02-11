@@ -7,8 +7,16 @@ This implementation includes **distributed** and **automatic mixed precision** s
 and uses the [RUSLAN dataset](https://ruslan-corpus.github.io/).
 
 Distributed and Automatic Mixed Precision support relies on NVIDIA's [Apex] and [AMP].
+
 ## Generated samples
 https://soundcloud.com/andrey-nikishaev/sets/russian-tts-nvidia-tacotron2
+
+## New
+* Added Diagonal guided attention (DGA) from another model https://arxiv.org/abs/1710.08969
+* Added Maximizing Mutual Information for Tacotron (MMI) https://arxiv.org/abs/1909.01145
+    - Can't make it work as showed in paper
+    - DGA still gives better results, and much cleaner
+* Added Russian text preparation with simple stress dictionary (za'mok i zamo'k)
 
 ## Pre-requisites
 1. NVIDIA GPU + CUDA cuDNN
