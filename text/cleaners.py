@@ -104,7 +104,15 @@ def transliteration_ua_cleaners(text):
 def transliteration_cleaners(text):
   '''Pipeline for non-English text that transliterates to ASCII.'''
   text = lowercase(text)
-  text = accent(text)
+  text = convert_to_ascii(text)
+  text = collapse_whitespace(text)
+  text = clean_end(text)
+  return text
+
+def transliteration_cleaners_with_stress(text):
+  '''Pipeline for non-English text that transliterates to ASCII.'''
+  text = lowercase(text)
+  text = rdc.add_stress(text)
   text = convert_to_ascii(text)
   text = collapse_whitespace(text)
   text = clean_end(text)

@@ -6,4 +6,5 @@ __pycache__
 *.zip
 .ipynb_checkpoints
 *.npy
+*.ch
 outdir

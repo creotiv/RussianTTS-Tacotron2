@@ -9,7 +9,7 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         # Experiment Parameters        #
         ################################
-        epochs=3,
+        epochs=3000,
         iters_per_checkpoint=100,
         seed=1234,
         dynamic_loss_scaling=True,
@@ -29,7 +29,7 @@ def create_hparams(hparams_string=None, verbose=False):
         dataset_path='/media/creotiv/DATA/DATASETS/RUSL',
         training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train.csv',
         validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val.csv',
-        text_cleaners=['transliteration_cleaners'],
+        text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################
         # Audio Parameters             #
@@ -85,15 +85,14 @@ def create_hparams(hparams_string=None, verbose=False):
         weight_decay=1e-6,
         grad_clip_thresh=1.0,
         batch_size=8,
-        mask_padding=True  # set model's padded outputs to padded values
+        mask_padding=True,  # set model's padded outputs to padded values
 
         ################################
         # MMI #
         ################################
-        use_mmi=True,
-        drop_frame_rate=0.2,
-        use_mmi=True,
-        use_gaf=True,
+        use_mmi=False,
+        drop_frame_rate=0.0 ,#0.2,
+        use_gaf=False,
         update_gaf_every_n_step=10,
         max_gaf=0.5,
         global_mean_npy='ljspeech_global_mean.npy'

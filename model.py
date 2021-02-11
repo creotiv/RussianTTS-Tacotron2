@@ -595,7 +595,7 @@ class Tacotron2(nn.Module):
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
-            output_lengths, ctc_text, ctc_text_lengths  = batch
+            output_lengths, ctc_text, ctc_text_lengths, guide_mask  = batch
         text_padded = to_gpu(text_padded).long()
         input_lengths = to_gpu(input_lengths).long()
         max_len = torch.max(input_lengths.data).item()
@@ -604,11 +604,12 @@ class Tacotron2(nn.Module):
         output_lengths = to_gpu(output_lengths).long()
         ctc_text = to_gpu(ctc_text).long()
         ctc_text_lengths = to_gpu(ctc_text_lengths).long()
+        guide_mask = to_gpu(guide_mask).float()
 
         return (
             (text_padded, input_lengths, mel_padded, max_len, output_lengths,
              ctc_text, ctc_text_lengths),
-            (mel_padded, gate_padded))
+            (mel_padded, gate_padded,guide_mask ))
 
     def parse_output(self, outputs, output_lengths=None):
         if self.mask_padding and output_lengths is not None:

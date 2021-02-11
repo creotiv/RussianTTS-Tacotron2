@@ -36,6 +36,16 @@ class RuDict:
             res = res.replace(k,v)
         return res
 
+    def add_stress(self, text):
+        text = text.replace("'","")
+        words = text.split(' ')
+        res = []
+        for w in words:
+            w = self.find(w)
+            res.append(w)
+        res = ' '.join(res)
+        return res.replace("'", "+")
+
 
 def preprocess(path, save_path):
     res = {}

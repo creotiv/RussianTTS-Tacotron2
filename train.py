@@ -17,6 +17,7 @@ from data_utils import TextMelLoader, TextMelCollate
 from loss_function import Tacotron2Loss
 from logger import Tacotron2Logger
 from hparams import create_hparams
+from utils import to_gpu
 
 
 def reduce_tensor(tensor, n_gpus):
@@ -135,7 +136,8 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         for i, batch in enumerate(val_loader):
             x, y = model.parse_batch(batch)
             y_pred = model(x)
-            loss = criterion(y_pred, y)
+            _loss = criterion(y_pred, y)
+            loss = sum(_loss)
             if distributed_run:
                 reduced_val_loss = reduce_tensor(loss.data, n_gpus).item()
             else:
@@ -154,7 +156,7 @@ def calculate_global_mean(data_loader, global_mean_npy):
         return to_gpu(torch.tensor(global_mean))
     sums = []
     frames = []
-    print('calculating global mean...')
+    print('\nCalculating global mean...\n')
     for i, batch in enumerate(data_loader):
         (text_padded, input_lengths, mel_padded, gate_padded,
          output_lengths, ctc_text, ctc_text_lengths) = batch
@@ -162,10 +164,10 @@ def calculate_global_mean(data_loader, global_mean_npy):
         sums.append(mel_padded.double().sum(dim=(0, 2)))
         frames.append(output_lengths.double().sum())
     global_mean = sum(sums) / sum(frames)
-    global_mean = to_gpu(global_mean.float())
+    global_mean = global_mean.float()
     if global_mean_npy:
-        np.save(global_mean_npy, global_mean.cpu().numpy())
-    return global_mean
+        np.save(global_mean_npy, global_mean)
+    return to_gpu(global_mean)
 
 def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_mmi_layers, n_gpus,
           rank, group_name, hparams):
@@ -188,6 +190,12 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     random.seed(hparams.seed)
     np.random.seed(hparams.seed)
 
+    train_loader, valset, collate_fn = prepare_dataloaders(hparams)
+    if hparams.drop_frame_rate > 0.:
+        global_mean = calculate_global_mean(train_loader, hparams.global_mean_npy)
+        hparams.global_mean = global_mean
+
+
     model = load_model(hparams)
     learning_rate = hparams.learning_rate
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
@@ -201,16 +209,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     if hparams.distributed_run:
         model = apply_gradient_allreduce(model)
 
-    criterion = Tacotron2Loss()
+    criterion = Tacotron2Loss(hparams)
 
     logger = prepare_directories_and_logger(
         output_directory, log_directory, rank)
-
-    train_loader, valset, collate_fn = prepare_dataloaders(hparams)
-    if hparams.drop_frame_rate > 0.:
-        global_mean = calculate_global_mean(train_loader, hparams.global_mean_npy)
-        hparams.global_mean = global_mean
-
 
     # Load checkpoint if one exists
     iteration = 0
@@ -246,7 +248,9 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
             x, y = model.parse_batch(batch)
             y_pred = model(x)
 
-            loss = criterion(y_pred, y)
+            _loss = criterion(y_pred, y)
+            loss = sum(_loss)
+            guide_loss = _loss[2]
 
             if model.mi is not None:
                 # transpose to [b, T, dim]
@@ -272,10 +276,12 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 reduced_loss = reduce_tensor(loss.data, n_gpus).item()
                 taco_loss = reduce_tensor(taco_loss.data, n_gpus).item()
                 mi_loss = reduce_tensor(mi_loss.data, n_gpus).item()
+                guide_loss = reduce_tensor(guide_loss.data, n_gpus).item()
             else:
                 reduced_loss = loss.item()
                 taco_loss = taco_loss.item()
                 mi_loss = mi_loss.item()
+                guide_loss = guide_loss.item()
 
 
             if hparams.distributed_run:
@@ -300,10 +306,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
 
             if not is_overflow and rank == 0:
                 duration = time.perf_counter() - start
-                print("Train loss {} {:.4f} mi_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
-                    iteration, taco_loss, mi_loss, grad_norm, duration))
+                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
+                    iteration, taco_loss, mi_loss, guide_loss, grad_norm, duration))
                 logger.log_training(
-                    reduced_loss, taco_loss, mi_loss, grad_norm,
+                    reduced_loss, taco_loss, mi_loss, guide_loss, grad_norm,
                     learning_rate, duration, iteration)
 
             if not is_overflow and (iteration % hparams.iters_per_checkpoint == 0):
@@ -327,7 +333,7 @@ if __name__ == '__main__':
                         help='directory to save tensorboard logs')
     parser.add_argument('-c', '--checkpoint_path', type=str, default=None,
                         required=False, help='checkpoint path')
-    parser.add_argument('--warm_start', action='store_true',
+    parser.add_argument('--warm-start', action='store_true',
                         help='load model weights only, ignore specified layers')
     parser.add_argument('--ignore-mmi-layers', action='store_true',
                         help='load model weights only, ignore specified layers')

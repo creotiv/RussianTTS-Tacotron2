@@ -5,7 +5,7 @@ import torch
 import torch.utils.data
 
 import layers
-from utils import load_wav_to_torch, load_filepaths_and_text
+from utils import load_wav_to_torch, load_filepaths_and_text, guide_attention_fast
 from text import text_to_sequence, sequence_to_ctc_sequence
 
 
@@ -42,7 +42,8 @@ class TextMelLoader(torch.utils.data.Dataset):
         audiopath, text = audiopath_and_text[0], audiopath_and_text[2].strip() or audiopath_and_text[1].strip()
         text, ctc_text = self.get_text(text)
         mel = self.get_mel(os.path.join(self.ds_path,'wavs',audiopath+'.wav'))
-        return (text, ctc_text, mel)
+        guide_mask = torch.FloatTensor(guide_attention_fast(len(text),mel.shape[-1],200,1000))
+        return (text, ctc_text, mel, guide_mask)
 
     def get_mel(self, filename):
         if not os.path.exists(filename+'.np'):
@@ -129,5 +130,12 @@ class TextMelCollate():
             gate_padded[i, mel.size(1)-1:] = 1
             output_lengths[i] = mel.size(1)
 
+        guide_padded = torch.FloatTensor(len(batch), 200, 1000)
+        guide_padded.zero_()
+
+        for i in range(len(ids_sorted_decreasing)):
+            guide = batch[ids_sorted_decreasing[i]][3]
+            guide_padded[i, :, :] = guide
+
         return text_padded, input_lengths, mel_padded, gate_padded, \
-            output_lengths, ctc_text_paded, ctc_text_lengths
+            output_lengths, ctc_text_paded, ctc_text_lengths, guide_padded
