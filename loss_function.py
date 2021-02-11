@@ -30,10 +30,10 @@ class Tacotron2Loss(nn.Module):
 
         attention_masks = torch.ones_like(alignments_out)
 
-        loss_atten = self.criterion_attention(
+        loss_atten = 2*self.criterion_attention(
                 guide_target * alignments_out * attention_masks,
                 torch.zeros_like(alignments_out)) * self.scale
-
+        
         self.scale *= self.guide_decay
         if self.scale < self.guide_lowbound:
             self.scale = self.guide_lowbound
