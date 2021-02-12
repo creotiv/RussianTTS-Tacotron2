@@ -85,8 +85,6 @@ def guide_attention_fast(txt_len, mel_len, max_txt, max_mel):
     alpha =  - np.arcsin(txt_len/c)*(180/math.pi)
 
     img = cv2.imread('grad.png')[:,:,0]
-    # img = cv2.resize(img,(300,15))
-    # img_h,img_w = 15,300
     scale = int(max_mel//img_w + 20)
     img = np.concatenate([img]*scale,1)
     base_img = img.copy()

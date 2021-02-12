@@ -209,8 +209,6 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     if hparams.distributed_run:
         model = apply_gradient_allreduce(model)
 
-    criterion = Tacotron2Loss(hparams)
-
     logger = prepare_directories_and_logger(
         output_directory, log_directory, rank)
 
@@ -233,6 +231,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 learning_rate = _learning_rate
             iteration += 1  # next iteration is iteration + 1
             epoch_offset = max(0, int(iteration / len(train_loader)))
+
+    criterion = Tacotron2Loss(hparams, iteration=iteration)
 
     model.train()
     is_overflow = False

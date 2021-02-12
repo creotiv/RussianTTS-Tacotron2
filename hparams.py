@@ -95,7 +95,7 @@ def create_hparams(hparams_string=None, verbose=False):
         use_gaf=False,
         update_gaf_every_n_step=10,
         max_gaf=0.5,
-        global_mean_npy='ljspeech_global_mean.npy'
+        global_mean_npy='ruslan_global_mean.npy'
     )
 
     if hparams_string:

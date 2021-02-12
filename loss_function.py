@@ -3,11 +3,11 @@ import torch
 
 
 class Tacotron2Loss(nn.Module):
-    def __init__(self, hparams):
+    def __init__(self, hparams, iteration=0):
         super(Tacotron2Loss, self).__init__()
         self.hparams = hparams
-        self.scale = 100.0
         self.guide_decay = 0.99999
+        self.scale = 100.0 * (self.guide_decay**iteration)
         self.guide_lowbound = 1.0
         self.criterion_attention = nn.L1Loss()
 
