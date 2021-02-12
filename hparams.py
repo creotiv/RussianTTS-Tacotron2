@@ -88,14 +88,18 @@ def create_hparams(hparams_string=None, verbose=False):
         mask_padding=True,  # set model's padded outputs to padded values
 
         ################################
-        # MMI #
+        # FINE-TUNE #
         ################################
         use_mmi=False,
+
         drop_frame_rate=0.0 ,#0.2,
         use_gaf=False,
         update_gaf_every_n_step=10,
         max_gaf=0.5,
-        global_mean_npy='ruslan_global_mean.npy'
+        
+        global_mean_npy='ruslan_global_mean.npy',
+
+        use_gst=True,
     )
 
     if hparams_string:

@@ -9,6 +9,7 @@ import contextlib
 import numpy as np
 import random
 from text.symbols import ctc_symbols
+from gst import GST
 
 
 class LocationLayer(nn.Module):
@@ -583,6 +584,8 @@ class Tacotron2(nn.Module):
         self.postnet = Postnet(hparams)
         self.drop_frame_rate = hparams.drop_frame_rate
         self.use_mmi = hparams.use_mmi
+        self.use_gst = hparams.use_gst
+
         if self.drop_frame_rate > 0.:
             # global mean is not used at inference.
             self.global_mean = getattr(hparams, 'global_mean', None)
@@ -592,6 +595,10 @@ class Tacotron2(nn.Module):
             self.mi = MIEsitmator(vocab_size, decoder_dim, decoder_dim, dropout=0.5)
         else:
             self.mi = None
+
+        self.gst = None
+        if self.use_gst:
+            self.gst = GST(hparams)
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -635,8 +642,11 @@ class Tacotron2(nn.Module):
             mels = dropout_frame(mels, self.global_mean, output_lengths, self.drop_frame_rate)
 
         embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
-
         encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+
+        if self.gst is not None:
+            gst_outputs = self.gst(inputs=mels, input_lengths=output_lengths)
+            encoder_outputs += gst_outputs['style_emb'].expand_as(encoder_outputs)
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
             encoder_outputs, mels, memory_lengths=text_lengths)
@@ -648,9 +658,15 @@ class Tacotron2(nn.Module):
             [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments],
             output_lengths)
 
-    def inference(self, inputs, seed=None):
+    def inference(self, inputs, seed=None, reference_mel=None, token_idx=None):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)
         encoder_outputs = self.encoder.inference(embedded_inputs)
+
+        if self.gst is not None:
+            gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
+            if gst_output is not None:
+                encoder_outputs += gst_output
+
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs, seed=seed)
 
