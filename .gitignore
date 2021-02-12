@@ -8,3 +8,7 @@ __pycache__
 *.npy
 *.ch
 outdir
+
+!imgs/DGA_15k.png
+!imgs/MMI_15k.png
+!grad.png
