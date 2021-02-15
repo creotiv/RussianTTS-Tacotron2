@@ -76,47 +76,25 @@ def rotate_image(image, angle, center=(0,25)):
   result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
   return result
 
-def guide_attention_fast(txt_len, mel_len, max_txt, max_mel):
-    img_h,img_w = 50,300
-
-    _max_mel = max_mel + img_w
-
-    c = math.sqrt(txt_len**2+mel_len**2)
-    alpha =  - np.arcsin(txt_len/c)*(180/math.pi)
-
-    img = cv2.imread('grad.png')[:,:,0]
-    scale = int(max_mel//img_w + 20)
-    img = np.concatenate([img]*scale,1)
-    base_img = img.copy()
-    h,w = max_txt+img_h, _max_mel
-    mask = np.zeros((h,w), dtype=np.float32)
-    mask[:img_h,:img.shape[1]] = img[:img_h,:_max_mel]
-    mask = rotate_image(mask, alpha)
-
-    y = txt_len
-    mask[:,mel_len:_max_mel] = 0
-
-    if mel_len < max_mel:
-        hw = _max_mel-mel_len
-        hs = txt_len
-        he = txt_len+img_h
-        mask[hs:he,mel_len:_max_mel] = base_img[:,0:hw]
-
-    mask = mask[img_h//2:-img_h//2,:max_mel]
-    mask[txt_len:,:] = 0
-    return (255 - mask)/255
-
-# TODO: Replace attetion guide with this. Its fast and no png needed
 def diagonal_guide(text_len, mel_len, g=0.2):
     grid_text = torch.linspace(0., 1. - 1. / text_len, text_len)  # (T)
     grid_mel = torch.linspace(0., 1. - 1. / mel_len, mel_len)  # (M)
     grid = grid_text.view(1, -1) - grid_mel.view(-1, 1)  # (M, T)
     W = 1 - torch.exp(-grid ** 2 / (2 * g ** 2))
-    return W
+    return W.numpy()
 
 def linear_guide(text_len, mel_len, g=0.2):
-    a = np.linspace(1., 0., text_len//2)  # (T)
-    b = a[::-1]
-    d = np.concatenate([a,b]).reshape(-1,1).repeat(mel_len,1)
-    W = 1 - np.exp(-d ** 2 / (2 * g ** 2))
-    return torch.tensor(W)
+    a = np.linspace(-1., -1./text_len, text_len)  # (T)
+    W = 1 - np.exp(-a ** 2 / (2 * g ** 2))
+    return W
+
+def guide_attention_fast(txt_len, mel_len, max_txt, max_mel, g=0.2):
+    h,w = max_txt, max_mel
+    mask = np.ones((h,w), dtype=np.float32)
+
+    diag = diagonal_guide(txt_len, mel_len, g=g)
+    mask[:txt_len,:mel_len] = np.transpose(diag,(1,0))
+
+    linear = linear_guide(txt_len,mel_len).reshape(-1,1)
+    mask[:txt_len,mel_len:] = linear.repeat(max_mel-mel_len,axis=-1)
+    return mask
