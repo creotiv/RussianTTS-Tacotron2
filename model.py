@@ -649,6 +649,9 @@ class Tacotron2(nn.Module):
         if self.gst is not None:
             gst_outputs = self.gst(inputs=mels, input_lengths=output_lengths)
             emb_vector = gst_outputs['style_emb'].expand_as(encoder_outputs)
+            # TODO: use this if not trained well without voice emb vector
+            # if random.random() > 0.1:
+            #     emb_vector *= 0.
             encoder_outputs = torch.cat([encoder_outputs,emb_vector], dim=-1)
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
@@ -667,8 +670,11 @@ class Tacotron2(nn.Module):
 
         if self.gst is not None:
             gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
-            if gst_output is not None:
-                encoder_outputs = torch.cat([encoder_outputs,gst_output], dim=-1)
+            if gst_output is None:
+                gst_output = torch.zeros_like(encoder_outputs)
+            else:
+                gst_output = gst_output.expand_as(encoder_outputs)
+            encoder_outputs = torch.cat([encoder_outputs,gst_output], dim=-1)
 
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs, seed=seed)
