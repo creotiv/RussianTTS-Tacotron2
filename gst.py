@@ -35,7 +35,7 @@ class ReferenceEncoder(torch.nn.Module):
 
         self.gru = torch.nn.GRU(
             input_size=reference_encoder_filters[-1] * out_channels,
-            hidden_size=hparams.encoder_embedding_dim // 2,
+            hidden_size=hparams.gst_embedding_dim//2,
             batch_first=True
         )
 
@@ -81,15 +81,15 @@ class STL(torch.nn.Module):
         self.stl_token_num = 10
 
         self.embed = torch.nn.Parameter(torch.FloatTensor(
-            self.stl_token_num, hparams.encoder_embedding_dim // self.stl_num_heads
+            self.stl_token_num, hparams.gst_embedding_dim // self.stl_num_heads
         ))
-        d_q = hparams.encoder_embedding_dim // 2
-        d_k = hparams.encoder_embedding_dim // self.stl_num_heads
+        d_q = hparams.gst_embedding_dim // 2
+        d_k = hparams.gst_embedding_dim // self.stl_num_heads
 
         self.attention = MultiHeadAttention(
             query_dim=d_q,
             key_dim=d_k,
-            num_units=hparams.encoder_embedding_dim,
+            num_units=hparams.gst_embedding_dim,
             num_heads=self.stl_num_heads
         )
 

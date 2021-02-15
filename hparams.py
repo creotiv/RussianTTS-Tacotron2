@@ -99,7 +99,8 @@ def create_hparams(hparams_string=None, verbose=False):
         
         global_mean_npy='ruslan_global_mean.npy',
 
-        use_gst=False
+        use_gst=True,
+        gst_embedding_dim=512
     )
 
     if hparams_string:
