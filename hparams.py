@@ -10,7 +10,7 @@ def create_hparams(hparams_string=None, verbose=False):
         # Experiment Parameters        #
         ################################
         epochs=3000,
-        iters_per_checkpoint=100,
+        iters_per_checkpoint=1000,
         seed=1234,
         dynamic_loss_scaling=True,
         fp16_run=False,
@@ -99,7 +99,7 @@ def create_hparams(hparams_string=None, verbose=False):
         
         global_mean_npy='ruslan_global_mean.npy',
 
-        use_gst=True,
+        use_gst=False,
     )
 
     if hparams_string:

@@ -116,6 +116,7 @@ def transliteration_cleaners_with_stress(text):
   text = convert_to_ascii(text)
   text = collapse_whitespace(text)
   text = clean_end(text)
+  text = "S"+text+"E"
   return text
 
 

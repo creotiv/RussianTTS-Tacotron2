@@ -170,7 +170,8 @@ class GST(torch.nn.Module):
 
 
     def inference(self, encoder_outputs, reference_mel=None, token_idx=None):
-        dtype = torch.half if 'cuda' in self.stl.device else torch.float
+        device = str(next(self.stl.parameters()).device)
+        dtype = torch.half if 'cuda' in device else torch.float
 
         style_embedding = None
         if reference_mel is not None:
@@ -178,7 +179,7 @@ class GST(torch.nn.Module):
             style_embedding = style_embedding.expand_as(encoder_outputs)
         elif token_idx is not None:
             encoder_embedding_dim = encoder_outputs.size(-1)
-            query = torch.zeros(1, 1, encoder_embedding_dim // 2).to(device=self.stl.device, dtype=dtype)
+            query = torch.zeros(1, 1, encoder_embedding_dim // 2).to(device=device, dtype=dtype)
             token = torch.tanh(self.stl.embed[token_idx]).view(1, 1, -1)
             _, style_embedding = self.stl.attention(query, token)
 

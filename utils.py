@@ -106,3 +106,17 @@ def guide_attention_fast(txt_len, mel_len, max_txt, max_mel):
     mask[txt_len:,:] = 0
     return (255 - mask)/255
 
+# TODO: Replace attetion guide with this. Its fast and no png needed
+def diagonal_guide(text_len, mel_len, g=0.2):
+    grid_text = torch.linspace(0., 1. - 1. / text_len, text_len)  # (T)
+    grid_mel = torch.linspace(0., 1. - 1. / mel_len, mel_len)  # (M)
+    grid = grid_text.view(1, -1) - grid_mel.view(-1, 1)  # (M, T)
+    W = 1 - torch.exp(-grid ** 2 / (2 * g ** 2))
+    return W
+
+def linear_guide(text_len, mel_len, g=0.2):
+    a = np.linspace(1., 0., text_len//2)  # (T)
+    b = a[::-1]
+    d = np.concatenate([a,b]).reshape(-1,1).repeat(mel_len,1)
+    W = 1 - np.exp(-d ** 2 / (2 * g ** 2))
+    return torch.tensor(W)
