@@ -42,7 +42,7 @@ class ReferenceEncoder(torch.nn.Module):
 
     def forward(self, inputs, input_lengths=None):
         N = inputs.size(0)
-        out = inputs.view(N, 1, -1, self.n_mels)  # [N, 1, Ty, n_mels]
+        out = inputs.contiguous().view(N, 1, -1, self.n_mels)  # [N, 1, Ty, n_mels]
         for conv in self.convs:
             out = conv(out)
 
@@ -175,8 +175,8 @@ class GST(torch.nn.Module):
 
         style_embedding = None
         if reference_mel is not None:
-            _, style_embedding = self._forward(reference_mel)
-            style_embedding = style_embedding.expand_as(encoder_outputs)
+            out = self.forward(reference_mel)
+            style_embedding = out['style_emb'].expand_as(encoder_outputs)
         elif token_idx is not None:
             encoder_embedding_dim = encoder_outputs.size(-1)
             query = torch.zeros(1, 1, encoder_embedding_dim // 2).to(device=device, dtype=dtype)
