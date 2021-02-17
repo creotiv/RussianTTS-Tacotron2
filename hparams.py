@@ -27,8 +27,8 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         load_mel_from_disk=False,
         dataset_path='/media/creotiv/DATA/DATASETS/RUSL',
-        training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train.csv',
-        validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val.csv',
+        training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train_all.csv',
+        validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val_all.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################
@@ -99,7 +99,7 @@ def create_hparams(hparams_string=None, verbose=False):
         
         global_mean_npy='ruslan_global_mean.npy',
 
-        use_gst=False
+        use_gst=True
     )
 
     if hparams_string:

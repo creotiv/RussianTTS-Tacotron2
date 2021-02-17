@@ -6,7 +6,7 @@ class Tacotron2Loss(nn.Module):
     def __init__(self, hparams, iteration=0):
         super(Tacotron2Loss, self).__init__()
         self.hparams = hparams
-        self.guide_decay = 0.999999
+        self.guide_decay = 0.99999
         self.scale = 100.0 * (self.guide_decay**iteration)
         print('Guide scale:',self.scale)
         self.guide_lowbound = 1.0

@@ -7,8 +7,11 @@ __pycache__
 .ipynb_checkpoints
 *.npy
 *.ch
+*.wav
 outdir
+weights
 
 !imgs/DGA_15k.png
 !imgs/MMI_15k.png
 !grad.png
+
