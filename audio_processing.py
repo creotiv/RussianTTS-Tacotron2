@@ -2,6 +2,26 @@ import torch
 import numpy as np
 from scipy.signal import get_window
 import librosa.util as librosa_util
+import layers
+from utils import load_wav_to_torch
+ 
+
+def get_mel(filename, hparams):
+    stft = layers.TacotronSTFT(
+        hparams.filter_length, hparams.hop_length, hparams.win_length,
+        hparams.n_mel_channels, hparams.sampling_rate, hparams.mel_fmin,
+        hparams.mel_fmax
+    )
+    audio, sampling_rate = load_wav_to_torch(filename)
+    if sampling_rate != hparams.sampling_rate:
+        raise ValueError("{} {} SR doesn't match target {} SR".format(
+            sampling_rate, hparams.sampling_rate))
+    audio_norm = audio / hparams.max_wav_value
+    audio_norm = audio_norm.unsqueeze(0)
+    audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)
+    melspec = stft.mel_spectrogram(audio_norm)
+  
+    return melspec
 
 
 def window_sumsquare(window, n_frames, hop_length=200, win_length=800,
