@@ -183,7 +183,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     rank (int): rank of current gpu
     hparams (object): comma separated list of "name=value" pairs.
     """
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
 
     if hparams.distributed_run:
         init_distributed(hparams, n_gpus, rank, group_name)

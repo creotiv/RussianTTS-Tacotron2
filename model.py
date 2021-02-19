@@ -646,7 +646,7 @@ class Tacotron2(nn.Module):
 
         if self.gst is not None:
             gst_outputs = self.gst(inputs=mels, input_lengths=output_lengths)
-            tpse_gst_outputs = gst_outputs['style_emb']#self.tpse_gst(encoder_outputs)
+            tpse_gst_outputs = self.tpse_gst(encoder_outputs)
             encoder_outputs += gst_outputs['style_emb'].expand_as(encoder_outputs)
 
 
@@ -665,7 +665,7 @@ class Tacotron2(nn.Module):
         encoder_outputs = self.encoder.inference(embedded_inputs)
 
         if self.gst is not None:
-            tpse_gst_outputs = self.tpse_gst(encoder_outputs)
+            tpse_gst_outputs = self.tpse_gst(encoder_outputs).expand_as(encoder_outputs)
             encoder_outputs += tpse_gst_outputs
             # gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
             # if gst_output is not None:
