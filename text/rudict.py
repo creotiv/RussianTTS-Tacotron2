@@ -37,6 +37,8 @@ class RuDict:
         return res
 
     def add_stress(self, text):
+        if "+" in text:
+            return text
         text = text.replace("'","")
         words = text.split(' ')
         res = []
