@@ -9,7 +9,7 @@ import contextlib
 import numpy as np
 import random
 from text.symbols import ctc_symbols
-from gst import GST
+from gst import GST, TPSEGST
 
 
 class LocationLayer(nn.Module):
@@ -210,7 +210,6 @@ class Encoder(nn.Module):
 
         outputs, _ = nn.utils.rnn.pad_packed_sequence(
             outputs, batch_first=True)
-
         return outputs
 
     def inference(self, x):
@@ -599,6 +598,7 @@ class Tacotron2(nn.Module):
         self.gst = None
         if self.use_gst:
             self.gst = GST(hparams)
+            self.tpse_gst = TPSEGST(hparams)
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -646,7 +646,9 @@ class Tacotron2(nn.Module):
 
         if self.gst is not None:
             gst_outputs = self.gst(inputs=mels, input_lengths=output_lengths)
+            tpse_gst_outputs = gst_outputs['style_emb']#self.tpse_gst(encoder_outputs)
             encoder_outputs += gst_outputs['style_emb'].expand_as(encoder_outputs)
+
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
             encoder_outputs, mels, memory_lengths=text_lengths)
@@ -655,7 +657,7 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         return self.parse_output(
-            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments],
+            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs['style_emb']],
             output_lengths)
 
     def inference(self, inputs, seed=None, reference_mel=None, token_idx=None):
@@ -663,9 +665,11 @@ class Tacotron2(nn.Module):
         encoder_outputs = self.encoder.inference(embedded_inputs)
 
         if self.gst is not None:
-            gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
-            if gst_output is not None:
-                encoder_outputs += gst_output
+            tpse_gst_outputs = self.tpse_gst(encoder_outputs)
+            encoder_outputs += tpse_gst_outputs
+            # gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
+            # if gst_output is not None:
+            #     encoder_outputs += gst_output
 
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs, seed=seed)

@@ -13,7 +13,7 @@ class Tacotron2Loss(nn.Module):
         self.criterion_attention = nn.L1Loss()
 
     def forward(self, model_output, targets):
-        _, mel_out, mel_out_postnet, gate_out, alignments_out = model_output
+        _, mel_out, mel_out_postnet, gate_out, alignments_out, tpse_gst_pred,gst_target = model_output
         mel_target, gate_target, guide_target = targets[0], targets[1], targets[2]
 
         mel_target.requires_grad = False
@@ -25,6 +25,7 @@ class Tacotron2Loss(nn.Module):
 
         
         gate_out = gate_out.view(-1, 1)
+        emb_loss = nn.L1Loss()(tpse_gst_pred, gst_target)
         mel_loss = nn.MSELoss()(mel_out, mel_target) + \
             nn.MSELoss()(mel_out_postnet, mel_target)
         gate_loss = 1.3 * nn.BCEWithLogitsLoss()(gate_out, gate_target)
@@ -39,4 +40,4 @@ class Tacotron2Loss(nn.Module):
         if self.scale < self.guide_lowbound:
             self.scale = self.guide_lowbound
 
-        return mel_loss, gate_loss, loss_atten
+        return mel_loss, gate_loss, loss_atten, emb_loss

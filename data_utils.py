@@ -29,12 +29,15 @@ class TextMelLoader(torch.utils.data.Dataset):
         self.clean_non_existent()
         random.seed(hparams.seed)
         random.shuffle(self.audiopaths_and_text)
+        print('Dataset files:',len(self.audiopaths_and_text))
 
     def clean_non_existent(self):
         out = []
         for el in self.audiopaths_and_text:
             if os.path.exists(os.path.join(self.ds_path,'wavs',"%s.wav" % el[0])):
                 out.append(el)
+            else:
+                print(el[0])
         self.audiopaths_and_text = out
 
     def get_mel_text_pair(self, audiopath_and_text):
@@ -46,7 +49,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         return (text, ctc_text, mel, guide_mask)
 
     def get_mel(self, filename):
-        if not os.path.exists(filename+'.np'):
+        if not os.path.exists(filename+'.npy'):
             audio, sampling_rate = load_wav_to_torch(filename)
             if sampling_rate != self.stft.sampling_rate:
                 raise ValueError("{} {} SR doesn't match target {} SR".format(
@@ -56,9 +59,9 @@ class TextMelLoader(torch.utils.data.Dataset):
             audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)
             melspec = self.stft.mel_spectrogram(audio_norm)
             melspec = torch.squeeze(melspec, 0)
-            np.save(filename+'.np',melspec)
+            np.save(filename+'.npy',melspec)
         else:
-            melspec = torch.from_numpy(np.load(filename+'.np'))
+            melspec = torch.from_numpy(np.load(filename+'.npy'))
             assert melspec.size(0) == self.stft.n_mel_channels, (
                 'Mel dimension mismatch: given {}, expected {}'.format(
                     melspec.size(0), self.stft.n_mel_channels))

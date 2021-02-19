@@ -97,7 +97,7 @@ def warm_start_model(checkpoint_path, model, ignore_layers, exclude=None):
         dummy_dict = model.state_dict()
         dummy_dict.update(model_dict)
         model_dict = dummy_dict
-    model.load_state_dict(model_dict)
+    model.load_state_dict(model_dict, strict=False)
     return model
 
 
@@ -170,7 +170,7 @@ def calculate_global_mean(data_loader, global_mean_npy):
         np.save(global_mean_npy, global_mean)
     return to_gpu(global_mean)
 
-def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_mmi_layers, ignore_gst_layers, n_gpus,
+def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_mmi_layers, ignore_gst_layers, ignore_tsgst_layers, n_gpus,
           rank, group_name, hparams):
     """Training and validation logging results to tensorboard and stdout
 
@@ -183,6 +183,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     rank (int): rank of current gpu
     hparams (object): comma separated list of "name=value" pairs.
     """
+    torch.autograd.set_detect_anomaly(True)
+
     if hparams.distributed_run:
         init_distributed(hparams, n_gpus, rank, group_name)
 
@@ -217,7 +219,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     iteration = 0
     epoch_offset = 0
     if checkpoint_path is not None:
-        if warm_start or ignore_mmi_layers or ignore_gst_layers:
+        if warm_start or ignore_mmi_layers or ignore_gst_layers or ignore_tsgst_layers:
             layers = []
             exclude = None
             if warm_start:
@@ -226,6 +228,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 layers += hparams.mmi_ignore_layers
             if ignore_gst_layers:
                 exclude = 'gst.'
+            if ignore_tsgst_layers:
+                exclude = 'tpse_gst.'
             model = warm_start_model(
                 checkpoint_path, model, layers, exclude)
         else:
@@ -256,6 +260,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
             loss = sum(_loss)
             guide_loss = _loss[2]
             gate_loss = _loss[1]
+            emb_loss = _loss[3]
 
             if model.mi is not None:
                 # transpose to [b, T, dim]
@@ -283,12 +288,14 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 mi_loss = reduce_tensor(mi_loss.data, n_gpus).item()
                 guide_loss = reduce_tensor(guide_loss.data, n_gpus).item()
                 gate_loss = reduce_tensor(gate_loss.data, n_gpus).item()
+                emb_loss = reduce_tensor(emb_loss.data, n_gpus).item()
             else:
                 reduced_loss = loss.item()
                 taco_loss = taco_loss.item()
                 mi_loss = mi_loss.item()
                 guide_loss = guide_loss.item()
                 gate_loss = gate_loss.item()
+                emb_loss = emb_loss.item()
 
 
             if hparams.distributed_run:
@@ -313,10 +320,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
 
             if not is_overflow and rank == 0:
                 duration = time.perf_counter() - start
-                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
-                    iteration, taco_loss, mi_loss, guide_loss, gate_loss, grad_norm, duration))
+                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
+                    iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, grad_norm, duration))
                 logger.log_training(
-                    reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, grad_norm,
+                    reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, grad_norm,
                     learning_rate, duration, iteration)
 
             if not is_overflow and (iteration % hparams.iters_per_checkpoint == 0):
@@ -346,6 +353,8 @@ if __name__ == '__main__':
                         help='load model weights only, ignore specified layers')
     parser.add_argument('--ignore-gst-layers', action='store_true',
                         help='load model weights only, ignore specified layers')
+    parser.add_argument('--ignore-tsgst-layers', action='store_true',
+                        help='load model weights only, ignore specified layers')
     parser.add_argument('--n_gpus', type=int, default=1,
                         required=False, help='number of gpus')
     parser.add_argument('--rank', type=int, default=0,
@@ -368,6 +377,5 @@ if __name__ == '__main__':
     print("cuDNN Enabled:", hparams.cudnn_enabled)
     print("cuDNN Benchmark:", hparams.cudnn_benchmark)
     
-
     train(args.output_directory, args.log_directory, args.checkpoint_path,
-          args.warm_start, args.ignore_mmi_layers, args.ignore_gst_layers, args.n_gpus, args.rank, args.group_name, hparams)
+          args.warm_start, args.ignore_mmi_layers, args.ignore_gst_layers, args.ignore_tsgst_layers, args.n_gpus, args.rank, args.group_name, hparams)

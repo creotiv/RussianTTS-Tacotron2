@@ -41,6 +41,7 @@ class ReferenceEncoder(torch.nn.Module):
 
 
     def forward(self, inputs, input_lengths=None):
+       
         N = inputs.size(0)
         out = inputs.contiguous().view(N, 1, -1, self.n_mels) # [N, 1, Ty, n_mels]
         for conv in self.convs:
@@ -49,13 +50,11 @@ class ReferenceEncoder(torch.nn.Module):
         out = out.transpose(1, 2)  # [N, Ty//2^K, 128, n_mels//2^K]
         N, T = out.size(0), out.size(1)
         out = out.contiguous().view(N, T, -1)  # [N, Ty//2^K, 128*n_mels//2^K]
-
         if input_lengths is not None:
             _input_lengths = self.calculate_size(input_lengths, **self.conv_params).cpu()
             out = nn.utils.rnn.pack_padded_sequence(
                 out, _input_lengths, batch_first=True, enforce_sorted=False
             )
-
         self.gru.flatten_parameters()
         _, out = self.gru(out)  # out --- [1, N, E//2]
 
@@ -184,3 +183,23 @@ class GST(torch.nn.Module):
             _, style_embedding = self.stl.attention(query, token)
 
         return style_embedding
+
+class TPSEGST(torch.nn.Module):
+    def __init__(self, hparams):
+        super().__init__()
+
+        self.gru = torch.nn.GRU(
+            input_size=hparams.encoder_embedding_dim,
+            hidden_size=64,
+            batch_first=True
+        )
+        self.linear = torch.nn.Linear(64,hparams.encoder_embedding_dim)
+
+    def forward(self, x):
+        x = x.contiguous()
+        self.gru.flatten_parameters()
+        _, y = self.gru(x)
+        y = y.squeeze(0).unsqueeze(1)
+        y = self.linear(y)
+
+        return y
