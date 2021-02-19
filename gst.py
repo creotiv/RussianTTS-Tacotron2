@@ -193,13 +193,18 @@ class TPSEGST(torch.nn.Module):
             hidden_size=64,
             batch_first=True
         )
-        self.linear = torch.nn.Linear(64,hparams.encoder_embedding_dim)
+        self.linear = torch.nn.Sequential(
+            torch.nn.Linear(64,hparams.encoder_embedding_dim//2),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hparams.encoder_embedding_dim//2,hparams.encoder_embedding_dim),
+        )
 
     def forward(self, x):
-        x = x.contiguous()
+        # Detaching from main graph to not send gradient to the GST layer
+        x = x.contiguous().detach()
         self.gru.flatten_parameters()
         _, y = self.gru(x)
         y = y.squeeze(0).unsqueeze(1)
-        y = self.linear(y)
+        y = torch.tanh(self.linear(y))
 
         return y
