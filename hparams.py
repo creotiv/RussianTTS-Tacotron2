@@ -10,7 +10,7 @@ def create_hparams(hparams_string=None, verbose=False):
         # Experiment Parameters        #
         ################################
         epochs=3000,
-        iters_per_checkpoint=1000,
+        iters_per_checkpoint=500,
         seed=1234,
         dynamic_loss_scaling=True,
         fp16_run=False,
@@ -27,8 +27,8 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         load_mel_from_disk=False,
         dataset_path='/media/creotiv/DATA/DATASETS/RUSL',
-        training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train_all.csv',
-        validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val_all.csv',
+        training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train_ruslan.csv',
+        validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val_ruslan.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################
@@ -58,7 +58,7 @@ def create_hparams(hparams_string=None, verbose=False):
         n_frames_per_step=1,  # currently only 1 is supported
         decoder_rnn_dim=1024,
         prenet_dim=256,
-        max_decoder_steps=1000,
+        max_decoder_steps=100000,
         gate_threshold=0.5,
         p_attention_dropout=0.1,
         p_decoder_dropout=0.1,

@@ -10,6 +10,8 @@ __pycache__
 *.wav
 outdir
 weights
+*.gz
+*.zip
 
 !imgs/DGA_15k.png
 !imgs/MMI_15k.png

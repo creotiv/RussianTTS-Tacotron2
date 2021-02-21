@@ -2,17 +2,28 @@ import os
 import sys
 import numpy as np
 import re
+from collections import defaultdict
 
 class RuDict:
     def __init__(self, path):
-        self.db = np.load(path, allow_pickle=True).item()
-        vovels = ["у","е","ы","а","о","э","я","и","ю"]
-        kv = dict(zip(vovels,["^","$","#","@","*","$","%","<",">"]))
-        self.tt = {}
-        for i in vovels:
-            for m in vovels:
-                self.tt[i+'*'+m] = i+kv[m]
-        self.tt.update(dict(zip(["у*","е*","ы*","а*","о*","э*","я*","и*","ю*"],["^","$","#","@","*","$","%","<",">"])))
+        if '.npy' in path:
+            self.db = np.load(path, allow_pickle=True).item()
+        else:
+            self.db = {}
+            self.duplicates = defaultdict(list)
+            with open(path) as fp:
+                for l in fp:
+                    t,e = l.strip().split('|')
+                    ex = self.db.get(t)
+                    if not ex:
+                        self.db[t] = e
+                    else:
+                        if ex.strip() != e.strip():
+                            if '+' in ex:
+                                self.duplicates[t].append(ex)
+                            if '+' in e:
+                                self.duplicates[t].append(e)
+            # print(self.duplicates,len(self.duplicates))
 
     def find(self, name, tries=4):
         l = len(name)
@@ -22,31 +33,15 @@ class RuDict:
                 return r + name[l-i:]
         return name
 
-    def text_to_text(self, text):
-        words = re.split('[\s]+',text)
-        res = []
-        for w in words:
-            cl = w.strip('!\'(),.:;?')
-            cl2 = self.find(cl)
-            w = w.replace(cl,cl2)
-            res.append(w)
-        res = ' '.join(res)
-        res = res.replace("'", "*")
-        for k,v in self.tt.items():
-            res = res.replace(k,v)
-        return res
-
     def add_stress(self, text):
         if "+" in text:
             return text
-        text = text.replace("'","")
         words = text.split(' ')
         res = []
         for w in words:
             w = self.find(w)
             res.append(w)
-        res = ' '.join(res)
-        return res.replace("'", "+")
+        return ' '.join(res)
 
 
 def preprocess(path, save_path):
@@ -62,4 +57,6 @@ def preprocess(path, save_path):
         np.save(save_path, res)
 
 if __name__ == '__main__':
-    preprocess(sys.argv[1], sys.argv[2])
+    # preprocess(sys.argv[1], sys.argv[2])
+    r = RuDict('ru_emphasize.dict')
+    print(r.add_stress('привет мама'))
