@@ -35,7 +35,7 @@ class ReferenceEncoder(torch.nn.Module):
 
         self.gru = torch.nn.GRU(
             input_size=reference_encoder_filters[-1] * out_channels,
-            hidden_size=hparams.encoder_embedding_dim // 2,
+            hidden_size=hparams.encoder_embedding_dim // 2, # 128 in the paper
             batch_first=True
         )
 
@@ -57,7 +57,6 @@ class ReferenceEncoder(torch.nn.Module):
             )
         self.gru.flatten_parameters()
         _, out = self.gru(out)  # out --- [1, N, E//2]
-
         return out.squeeze(0)
 
 

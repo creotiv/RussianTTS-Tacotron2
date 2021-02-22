@@ -667,7 +667,7 @@ class Tacotron2(nn.Module):
         if self.gst is not None:
             tpse_gst_outputs = self.tpse_gst(encoder_outputs).expand_as(encoder_outputs)
             encoder_outputs += tpse_gst_outputs
-            # gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
+            gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
             # if gst_output is not None:
             #     encoder_outputs += gst_output
 
