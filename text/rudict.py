@@ -15,6 +15,8 @@ class RuDict:
                 for l in fp:
                     t,e = l.strip().split('|')
                     ex = self.db.get(t)
+                    if '+' not in e.lower():
+                        print(e)
                     if not ex:
                         self.db[t] = e
                     else:

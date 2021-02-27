@@ -5,7 +5,7 @@ from text.symbols import symbols, ctc_symbols
 
 
 # Mappings from symbol to numeric ID and vice versa:
-_symbol_to_id = {s: i for i, s in enumerate(symbols)}
+symbol_to_id = {s: i for i, s in enumerate(symbols)}
 _id_to_symbol = {i: s for i, s in enumerate(symbols)}
 _ctc_symbole_to_id = {s: i for i, s in enumerate(ctc_symbols)}
 
@@ -66,7 +66,7 @@ def _clean_text(text, cleaner_names):
 
 
 def _symbols_to_sequence(symbols):
-  return [_symbol_to_id[s] for s in symbols if _should_keep_symbol(s)]
+  return [symbol_to_id[s] for s in symbols if _should_keep_symbol(s)]
 
 
 def _arpabet_to_sequence(text):
@@ -74,4 +74,4 @@ def _arpabet_to_sequence(text):
 
 
 def _should_keep_symbol(s):
-  return s in _symbol_to_id and s is not '_' and s is not '~'
+  return s in symbol_to_id and s is not '_' and s is not '~'

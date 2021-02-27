@@ -88,7 +88,7 @@ def linear_guide(text_len, mel_len, g=0.2):
     W = 1 - np.exp(-a ** 2 / (2 * g ** 2))
     return W
 
-def guide_attention_fast(txt_len, mel_len, max_txt, max_mel, g=0.2):
+def guide_attention_fast(txt_len, mel_len, max_txt, max_mel, g=0.20):
     h,w = max_txt, max_mel
     mask = np.ones((h,w), dtype=np.float32)
 
@@ -98,3 +98,7 @@ def guide_attention_fast(txt_len, mel_len, max_txt, max_mel, g=0.2):
     linear = linear_guide(txt_len,mel_len).reshape(-1,1)
     mask[:txt_len,mel_len:] = linear.repeat(max_mel-mel_len,axis=-1)
     return mask
+
+
+# res = guide_attention_fast(150,700,200,1000)
+# cv2.imwrite('test.png', (res*255).astype(np.uint8))

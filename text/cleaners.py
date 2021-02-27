@@ -17,10 +17,10 @@ import os
 from unidecode import unidecode
 from .numb import normalize_numbers
 from transliterate import translit
-from .rudict import RuDict
+from .emphasizer import Emphasizer
 
 if __file__:
-  rdc = RuDict(os.path.join(os.path.dirname(__file__),'ru_emphasize.dict'))
+  rdc = Emphasizer(os.path.join(os.path.dirname(__file__),'ru_emphasize.dict'))
 
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r'\s+')

@@ -18,6 +18,7 @@ from loss_function import Tacotron2Loss
 from logger import Tacotron2Logger
 from hparams import create_hparams
 from utils import to_gpu
+from text import symbol_to_id
 
 
 def reduce_tensor(tensor, n_gpus):
@@ -89,6 +90,8 @@ def warm_start_model(checkpoint_path, model, ignore_layers, exclude=None):
     print("Warm starting model from checkpoint '{}'".format(checkpoint_path))
     checkpoint_dict = torch.load(checkpoint_path, map_location='cpu')
     model_dict = checkpoint_dict['state_dict']
+    # model_dict['embedding.embedding.weight'] = model_dict['embedding.weight']
+    # del model_dict['embedding.weight']
     print("ignoring layers:",ignore_layers)
     if len(ignore_layers) > 0 or exclude:
         model_dict = {k: v for k, v in model_dict.items()
@@ -197,6 +200,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     if hparams.drop_frame_rate > 0.:
         global_mean = calculate_global_mean(train_loader, hparams.global_mean_npy)
         hparams.global_mean = global_mean
+    
+    hparams.end_symbols_ids = [symbol_to_id[s] for s in '?!.']
 
 
     model = load_model(hparams)

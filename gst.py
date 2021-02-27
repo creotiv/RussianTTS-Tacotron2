@@ -3,9 +3,14 @@
 Based on https://github.com/sovaai/sova-tts-engine/blob/master/modules/gst.py
 """
 import torch
-import torch.nn as nn
+import torch.nn as  nn
+from torch.nn import functional as F
 
 from layers import LinearNorm, Conv2Block
+from sklearn.metrics.pairwise import cosine_similarity as cs
+import matplotlib
+import matplotlib.pyplot as plt
+
 
 class ReferenceEncoder(torch.nn.Module):
     def __init__(self, hparams):
@@ -95,6 +100,13 @@ class STL(torch.nn.Module):
 
 
     def forward(self, inputs):
+        # norm = F.normalize(self.embed, dim=1).detach().cpu().numpy()
+        # res =  cs(norm, norm)
+        # print(res.shape)
+        # print(res)
+        # plt.imshow(res)
+        # plt.savefig('tt.png')
+
         N = inputs.size(0)
         query = inputs.unsqueeze(1)  # [N, 1, E//2]
         keys = torch.tanh(self.embed).unsqueeze(0).expand(N, -1, -1)  # [N, token_num, E // num_heads]

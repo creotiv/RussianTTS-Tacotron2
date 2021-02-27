@@ -566,6 +566,36 @@ class MIEsitmator(nn.Module):
         ctc_loss = (ctc_loss / decoder_lengths.float()).mean()
         return ctc_loss
 
+class Embeder(nn.Module):
+    def __init__(self, hparams):
+        super(Embeder, self).__init__()
+        self.embedding = nn.Embedding(
+            hparams.n_symbols, hparams.symbols_embedding_dim)
+        std = sqrt(2.0 / (hparams.n_symbols + hparams.symbols_embedding_dim))
+        val = sqrt(3.0) * std  # uniform bounds for std
+        self.embedding.weight.data.uniform_(-val, val)
+        self.end_symbols_ids = hparams.end_symbols_ids
+        
+    def forward(self, x):
+        emb = self.embedding(x)
+        if self.end_symbols_ids:
+            s = torch.tensor(self.end_symbols_ids, requires_grad=False).to(x.device)
+            end_vectors = self.embedding(s)
+            for b in range(x.size(0)):
+                seq = x[b].cpu().detach().numpy().tolist()
+                vec = None
+                for i in range(x.size(1),0,-1):
+                    if seq[i-1] in self.end_symbols_ids:
+                        _id = self.end_symbols_ids.index(seq[i-1])
+                        vec = end_vectors[_id,:]*1.5
+                        print('$$$',vec.max(),vec.min(),vec.mean())
+                        continue
+                    if vec is not None:
+                        emb[b,i-1] = emb[b,i-1] + vec
+
+        return emb
+
+
 class Tacotron2(nn.Module):
     def __init__(self, hparams):
         super(Tacotron2, self).__init__()
@@ -573,6 +603,7 @@ class Tacotron2(nn.Module):
         self.fp16_run = hparams.fp16_run
         self.n_mel_channels = hparams.n_mel_channels
         self.n_frames_per_step = hparams.n_frames_per_step
+        # self.embedding = Embeder(hparams)
         self.embedding = nn.Embedding(
             hparams.n_symbols, hparams.symbols_embedding_dim)
         std = sqrt(2.0 / (hparams.n_symbols + hparams.symbols_embedding_dim))
@@ -644,10 +675,13 @@ class Tacotron2(nn.Module):
         embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
         encoder_outputs = self.encoder(embedded_inputs, text_lengths)
 
+        tpse_gst_outputs = None
+        gst_output = None
         if self.gst is not None:
             gst_outputs = self.gst(inputs=mels, input_lengths=output_lengths)
             tpse_gst_outputs = self.tpse_gst(encoder_outputs)
             encoder_outputs += gst_outputs['style_emb'].expand_as(encoder_outputs)
+            gst_output = gst_outputs['style_emb']
 
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
@@ -657,7 +691,7 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         return self.parse_output(
-            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs['style_emb']],
+            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_output],
             output_lengths)
 
     def inference(self, inputs, seed=None, reference_mel=None, token_idx=None):
@@ -665,11 +699,14 @@ class Tacotron2(nn.Module):
         encoder_outputs = self.encoder.inference(embedded_inputs)
 
         if self.gst is not None:
-            tpse_gst_outputs = self.tpse_gst(encoder_outputs).expand_as(encoder_outputs)
-            encoder_outputs += tpse_gst_outputs
-            gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
-            # if gst_output is not None:
-            #     encoder_outputs += gst_output
+            if reference_mel is not None or token_idx is not None:
+                gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
+                if gst_output is not None:
+                    encoder_outputs += gst_output
+            else:
+                tpse_gst_outputs = self.tpse_gst(encoder_outputs).expand_as(encoder_outputs)
+                encoder_outputs += tpse_gst_outputs
+         
 
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs, seed=seed)

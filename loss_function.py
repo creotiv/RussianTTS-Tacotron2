@@ -25,7 +25,9 @@ class Tacotron2Loss(nn.Module):
 
         
         gate_out = gate_out.view(-1, 1)
-        emb_loss = nn.L1Loss()(tpse_gst_pred, gst_target)
+        emb_loss = torch.tensor(0)
+        if tpse_gst_pred is not None:
+            emb_loss = nn.L1Loss()(tpse_gst_pred, gst_target)
         mel_loss = nn.MSELoss()(mel_out, mel_target) + \
             nn.MSELoss()(mel_out_postnet, mel_target)
         gate_loss = 1.3 * nn.BCEWithLogitsLoss()(gate_out, gate_target)
