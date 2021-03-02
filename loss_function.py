@@ -39,6 +39,7 @@ class Tacotron2Loss(nn.Module):
                 torch.zeros_like(alignments_out)) * self.scale
         
         self.scale *= self.guide_decay
+        # self.scale = 100
         if self.scale < self.guide_lowbound:
             self.scale = self.guide_lowbound
 
