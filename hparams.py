@@ -91,6 +91,8 @@ def create_hparams(hparams_string=None, verbose=False):
         token_num=10,
         num_heads=8,
 
+        no_dga=False,
+
         ################################
         # Optimization Hyperparameters #
         ################################

@@ -360,6 +360,8 @@ if __name__ == '__main__':
                         help='load model weights only, ignore specified layers')
     parser.add_argument('--ignore-tsgst-layers', action='store_true',
                         help='load model weights only, ignore specified layers')
+    parser.add_argument('--no-dga', action='store_true',
+                        help='do not use DGA')
     parser.add_argument('--n_gpus', type=int, default=1,
                         required=False, help='number of gpus')
     parser.add_argument('--rank', type=int, default=0,
@@ -371,6 +373,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     hparams = create_hparams(args.hparams)
+    hparams.no_dga = True
 
     torch.backends.cudnn.enabled = hparams.cudnn_enabled
     torch.backends.cudnn.benchmark = hparams.cudnn_benchmark
