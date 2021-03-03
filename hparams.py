@@ -77,6 +77,20 @@ def create_hparams(hparams_string=None, verbose=False):
         postnet_kernel_size=5,
         postnet_n_convolutions=5,
 
+        # GST ======================
+        # Reference encoder
+        use_gst=True,
+        ref_enc_filters=[32, 32, 64, 64, 128, 128],
+        ref_enc_size=[3, 3],
+        ref_enc_strides=[2, 2],
+        ref_enc_pad=[1, 1],
+        ref_enc_gru_size=128,
+
+        # Style Token Layer
+        token_embedding_size=256,
+        token_num=10,
+        num_heads=8,
+
         ################################
         # Optimization Hyperparameters #
         ################################
@@ -98,8 +112,7 @@ def create_hparams(hparams_string=None, verbose=False):
         max_gaf=0.5,
         
         global_mean_npy='ruslan_global_mean.npy',
-
-        use_gst=True
+        
     )
 
     if hparams_string:

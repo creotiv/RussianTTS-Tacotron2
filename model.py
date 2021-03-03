@@ -238,6 +238,8 @@ class Decoder(nn.Module):
         self.n_mel_channels = hparams.n_mel_channels
         self.n_frames_per_step = hparams.n_frames_per_step
         self.encoder_embedding_dim = hparams.encoder_embedding_dim
+        if hparams.use_gst:
+            self.encoder_embedding_dim = hparams.encoder_embedding_dim + hparams.token_embedding_size
         self.attention_rnn_dim = hparams.attention_rnn_dim
         self.decoder_rnn_dim = hparams.decoder_rnn_dim
         self.prenet_dim = hparams.prenet_dim
@@ -257,16 +259,16 @@ class Decoder(nn.Module):
             [hparams.prenet_dim, hparams.prenet_dim])
 
         self.attention_rnn = nn.LSTMCell(
-            hparams.prenet_dim + hparams.encoder_embedding_dim,
+            hparams.prenet_dim + self.encoder_embedding_dim,
             hparams.attention_rnn_dim)
 
         self.attention_layer = Attention(
-            hparams.attention_rnn_dim, hparams.encoder_embedding_dim,
+            hparams.attention_rnn_dim, self.encoder_embedding_dim,
             hparams.attention_dim, hparams.attention_location_n_filters,
             hparams.attention_location_kernel_size)
 
         self.decoder_rnn = nn.LSTMCell(
-            hparams.attention_rnn_dim + hparams.encoder_embedding_dim,
+            hparams.attention_rnn_dim + self.encoder_embedding_dim,
             hparams.decoder_rnn_dim, 1)
 
         lp_out_dim = hparams.decoder_rnn_dim if self.use_mmi else hparams.n_mel_channels * hparams.n_frames_per_step
@@ -274,13 +276,13 @@ class Decoder(nn.Module):
         self.mel_layer = None
         if not self.use_mmi:
             self.linear_projection = LinearNorm(
-                hparams.decoder_rnn_dim + hparams.encoder_embedding_dim,
+                hparams.decoder_rnn_dim + self.encoder_embedding_dim,
                 lp_out_dim
             )
         else:
             self.linear_projection = nn.Sequential(
                 LinearNorm(
-                    hparams.decoder_rnn_dim + hparams.encoder_embedding_dim,
+                    hparams.decoder_rnn_dim + self.encoder_embedding_dim,
                     lp_out_dim,
                     w_init_gain='relu'
                 ),
@@ -303,7 +305,7 @@ class Decoder(nn.Module):
             )
 
         gate_in_dim = hparams.decoder_rnn_dim if self.use_mmi else \
-            hparams.decoder_rnn_dim + hparams.encoder_embedding_dim
+            hparams.decoder_rnn_dim + self.encoder_embedding_dim
 
         self.gate_layer = LinearNorm(
             gate_in_dim, 1,
@@ -673,16 +675,16 @@ class Tacotron2(nn.Module):
             mels = dropout_frame(mels, self.global_mean, output_lengths, self.drop_frame_rate)
 
         embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
-        encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+        emb_text = self.encoder(embedded_inputs, text_lengths)
+        encoder_outputs = emb_text
 
         tpse_gst_outputs = None
         gst_output = None
         if self.gst is not None:
-            gst_outputs = self.gst(inputs=mels, input_lengths=output_lengths)
+            gst_outputs = self.gst(mels, output_lengths)
+            emb_gst = gst_outputs.repeat(1, emb_text.size(1), 1)
             tpse_gst_outputs = self.tpse_gst(encoder_outputs)
-            encoder_outputs += gst_outputs['style_emb'].expand_as(encoder_outputs)
-            gst_output = gst_outputs['style_emb']
-
+            encoder_outputs = torch.cat((emb_text, emb_gst), dim=2)
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
             encoder_outputs, mels, memory_lengths=text_lengths)
@@ -691,22 +693,28 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         return self.parse_output(
-            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_output],
+            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
             output_lengths)
 
     def inference(self, inputs, seed=None, reference_mel=None, token_idx=None):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)
-        encoder_outputs = self.encoder.inference(embedded_inputs)
+        emb_text = self.encoder.inference(embedded_inputs)
+        encoder_outputs = emb_text
 
         if self.gst is not None:
-            if reference_mel is not None or token_idx is not None:
-                gst_output = self.gst.inference(encoder_outputs, reference_mel, token_idx)
-                if gst_output is not None:
-                    encoder_outputs += gst_output
+            if reference_mel is not None:
+                emb_gst = self.gst(style_input)
+            elif token_idx is not None:
+                query = torch.zeros(1, 1, self.gst.encoder.ref_enc_gru_size).cuda()
+                GST = torch.tanh(self.gst.stl.embed)
+                key = GST[token_idx].unsqueeze(0).expand(1, -1, -1)
+                emb_gst = self.gst.stl.attention(query, key)
             else:
-                tpse_gst_outputs = self.tpse_gst(encoder_outputs).expand_as(encoder_outputs)
-                encoder_outputs += tpse_gst_outputs
+                emb_gst = self.tpse_gst(emb_text)
+            emb_gst = emb_gst.repeat(1, emb_text.size(1), 1)
          
+            encoder_outputs = torch.cat(
+                    (emb_text, emb_gst), dim=2)
 
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs, seed=seed)
