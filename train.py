@@ -135,7 +135,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         val_loader = DataLoader(valset, sampler=val_sampler, num_workers=1,
                                 shuffle=False, batch_size=batch_size,
                                 pin_memory=False, collate_fn=collate_fn)
-
+        model.decoder.p_teacher_forcing = 0.0
         val_loss = 0.0
         for i, batch in enumerate(val_loader):
             x, y = model.parse_batch(batch)
@@ -150,6 +150,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         val_loss = val_loss / (i + 1)
 
     model.train()
+    model.decoder.p_teacher_forcing = 1.0
     if rank == 0:
         print("Validation loss {}: {:9f}  ".format(iteration, val_loss))
         logger.log_validation(val_loss, model, y, y_pred, iteration)
