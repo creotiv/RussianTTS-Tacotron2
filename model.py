@@ -696,22 +696,21 @@ class Tacotron2(nn.Module):
             [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
             output_lengths)
 
-    def inference(self, inputs, seed=None, reference_mel=None, token_idx=None):
+    def inference(self, inputs, seed=None, reference_mel=None, token_idx=None, scale=1.0):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)
         emb_text = self.encoder.inference(embedded_inputs)
         encoder_outputs = emb_text
 
         if self.gst is not None:
             if reference_mel is not None:
-                emb_gst = self.gst(reference_mel)*900000
+                emb_gst = self.gst(reference_mel)*scale
             elif token_idx is not None:
                 query = torch.zeros(1, 1, self.gst.encoder.ref_enc_gru_size, dtype=torch.float16).cuda()
                 GST = torch.tanh(self.gst.stl.embed)
                 key = GST[token_idx].unsqueeze(0).expand(1, -1, -1)
-                emb_gst = self.gst.stl.attention(query, key)*900
+                emb_gst = self.gst.stl.attention(query, key)*scale
             else:
-                emb_gst = self.tpse_gst(emb_text)
-            print(emb_gst.mean())
+                emb_gst = self.tpse_gst(emb_text)*scale
             emb_gst = emb_gst.repeat(1, emb_text.size(1), 1)
          
             encoder_outputs = torch.cat(
