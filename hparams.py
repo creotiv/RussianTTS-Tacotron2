@@ -26,9 +26,9 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
-        dataset_path='/media/creotiv/DATA/DATASETS/ru_RU/by_book/female/hajdurova/all',
-        training_files='/media/creotiv/DATA/DATASETS/ru_RU/by_book/female/hajdurova/all/filelists/train.csv',
-        validation_files='/media/creotiv/DATA/DATASETS/ru_RU/by_book/female/hajdurova/all/filelists/val.csv',
+        dataset_path='/media/creotiv/DATA/DATASETS/RUSL/',
+        training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train_ruslan_style.csv',
+        validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val_ruslan.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################

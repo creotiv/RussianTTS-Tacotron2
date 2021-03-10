@@ -590,7 +590,6 @@ class Embeder(nn.Module):
                     if seq[i-1] in self.end_symbols_ids:
                         _id = self.end_symbols_ids.index(seq[i-1])
                         vec = end_vectors[_id,:]*1.5
-                        print('$$$',vec.max(),vec.min(),vec.mean())
                         continue
                     if vec is not None:
                         emb[b,i-1] = emb[b,i-1] + vec
@@ -631,7 +630,7 @@ class Tacotron2(nn.Module):
         self.gst = None
         if self.use_gst:
             self.gst = GST(hparams)
-            self.tpse_gst = TPSEGST(hparams)
+            # self.tpse_gst = TPSEGST(hparams)
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -683,7 +682,7 @@ class Tacotron2(nn.Module):
         if self.gst is not None:
             gst_outputs = self.gst(mels, output_lengths)
             emb_gst = gst_outputs.repeat(1, emb_text.size(1), 1)
-            tpse_gst_outputs = self.tpse_gst(encoder_outputs)
+            # tpse_gst_outputs = self.tpse_gst(encoder_outputs)
             encoder_outputs = torch.cat((emb_text, emb_gst), dim=2)
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
@@ -711,6 +710,9 @@ class Tacotron2(nn.Module):
                 emb_gst = self.gst.stl.attention(query, key)*scale
             else:
                 emb_gst = self.tpse_gst(emb_text)*scale
+
+            print(emb_gst.mean())
+            print(emb_gst)
             emb_gst = emb_gst.repeat(1, emb_text.size(1), 1)
          
             encoder_outputs = torch.cat(
@@ -723,6 +725,6 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         outputs = self.parse_output(
-            [None, mel_outputs, mel_outputs_postnet, gate_outputs, alignments])
+            [None, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, emb_gst])
 
         return outputs
