@@ -608,7 +608,7 @@ class Tacotron2(nn.Module):
         self.embedding = nn.Embedding(
             hparams.n_symbols, hparams.symbols_embedding_dim)
         std = sqrt(2.0 / (hparams.n_symbols + hparams.symbols_embedding_dim))
-        val = sqrt(1.0) * std  # uniform bounds for std
+        val = sqrt(3.0) * std  # uniform bounds for std
         self.embedding.weight.data.uniform_(-val, val)
         self.encoder = Encoder(hparams)
         self.decoder = Decoder(hparams)
