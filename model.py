@@ -630,7 +630,7 @@ class Tacotron2(nn.Module):
         self.gst = None
         if self.use_gst:
             self.gst = GST(hparams)
-            # self.tpse_gst = TPSEGST(hparams)
+            self.tpse_gst = TPSEGST(hparams)
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -682,7 +682,7 @@ class Tacotron2(nn.Module):
         if self.gst is not None:
             gst_outputs = self.gst(mels, output_lengths)
             emb_gst = gst_outputs.repeat(1, emb_text.size(1), 1)
-            # tpse_gst_outputs = self.tpse_gst(encoder_outputs)
+            tpse_gst_outputs = self.tpse_gst(encoder_outputs)
             encoder_outputs = torch.cat((emb_text, emb_gst), dim=2)
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
@@ -711,8 +711,6 @@ class Tacotron2(nn.Module):
             else:
                 emb_gst = self.tpse_gst(emb_text)*scale
 
-            print(emb_gst.mean())
-            print(emb_gst)
             emb_gst = emb_gst.repeat(1, emb_text.size(1), 1)
          
             encoder_outputs = torch.cat(
