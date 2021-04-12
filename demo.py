@@ -71,7 +71,7 @@ def load_vocoder_model():
     generator.remove_weight_norm()
     return generator
 
-def inference(mel, generator, loundess=30):
+def inference(mel, generator, loundess=20):
     mel = mel.type(torch.float32)
     with torch.no_grad():
         y_g_hat = generator(mel)
@@ -89,14 +89,15 @@ def main():
     st.title("Text To Speech Demo")
 
     st.sidebar.title("Settings")
-    seed = st.sidebar.text_input('Seed', value='123456')
+    seed = st.sidebar.text_input('Seed', value='')
 
     seed = int(seed) if seed.strip() else None
 
     checkpoint_path = st.sidebar.selectbox("Weights",[
-        "weights/dga/checkpoint_186000_no_emph",
-        "weights/dga/checkpoint_350000",
-        "weights/gst/tpgst_old_100500", 
+        #"weights/dga/checkpoint_186000_no_emph",
+        #"weights/dga/checkpoint_350000",
+        #"weights/gst/tpgst_old_100500", 
+	"weights/tpgst/checkpoint_200k_10ktp"
     ])
     custom_path = st.sidebar.text_input('Custom weights', value="")
     if 'gst' in checkpoint_path:
@@ -106,20 +107,21 @@ def main():
     model = load_tts_model(checkpoint_path, hparams)
     vocoder = load_vocoder_model()
 
-    cleaner = "transliteration_cleaners"
-    if st.sidebar.checkbox('Use automatic emphasizer'):
-        cleaner = "transliteration_cleaners_with_stress"
+    #cleaner = "transliteration_cleaners"
+    #if st.sidebar.checkbox('Use automatic emphasizer'):
+    cleaner = "transliteration_cleaners_with_stress"
 
     _text = st.selectbox("Predefined text",[
         "Н+очь, +улица, фон+арь, апт+ека. Бессм+ысленный, и т+усклый св+ет. Жив+и ещ+е х+оть ч+етверть в+ека - Вс+ё б+удет т+ак. Исх+ода н+ет.",
         "мн+е хот+елось б+ы сказ+ать к+ак я призн+ателен вс+ем прис+утсвующим сд+есь.",
         "Тв+орог или твор+ог, к+озлы или козл+ы, з+амок или зам+ок.", 
         "Вс+е смеш+алось в д+оме Обл+онских. Жен+а узн+ала, что муж был в св+язи с б+ывшею в их д+оме франц+уженкою-гуверн+анткой, и объяв+ила м+ужу, что не м+ожет ж+ить с ним в одн+ом д+оме. Полож+ение это продолж+алось уже третий д+ень и муч+ительно ч+увствовалось и сам+ими супр+угами, и вс+еми чл+енами семь+и, и домоч+адцами.",
-        "Я открыл зам+ок и вошел в з+амок, сь+ев жарк+ое я п+онял как+ое сейч+ас ж+аркое лето в укра+ине."
-        "Тетрагидропиранилциклопентилтетрагидропиридопиридиновые вещества"
-        "Я открыл замок и вошел в замок, сьев жаркое я понял какое сейчас жаркое лето в украине."
+        "Я открыл зам+ок и вошел в з+амок, сь+ев жарк+ое я п+онял как+ое сейч+ас ж+аркое лето в укра+ине.",
+"Молод+ой парн+ишка Т+анг С+ан одн+ажды оступ+ился и сл+едуя сво+им жел+аниям и пр+ихотям вор+ует секр+етные уч+ения в своей школе боев+ых искусств.",
+        "Тетрагидропиранилциклопентилтетрагидропиридопиридиновые вещества",
+        "Я открыл замок и вошел в замок, сьев жаркое я понял какое сейчас жаркое лето в украине.",
     ])
-    text = st.text_area('What to say?', value="", height=250)
+    text = st.text_area('What to say?', value=_text, height=250)
     run = st.button('Generate')
     text = text or _text
 
@@ -130,7 +132,7 @@ def main():
         sequence = torch.autograd.Variable(
             torch.from_numpy(sequence)).cuda().long()
 
-        _, mel_outputs, mel_outputs_postnet, _, alignments = model.inference(sequence,seed=seed)
+        _, mel_outputs, mel_outputs_postnet, _, alignments, _ = model.inference(sequence,seed=seed)
         audio = inference(mel_outputs_postnet, vocoder)
         
         elapsed = time.perf_counter() - start
