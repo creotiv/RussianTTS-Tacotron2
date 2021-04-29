@@ -1,11 +1,11 @@
-import tensorflow as tf
+from tools import HParams
 from text import symbols
 
 
 def create_hparams(hparams_string=None, verbose=False):
     """Create model hyperparameters. Parse nondefault from given string."""
 
-    hparams = tf.contrib.training.HParams(
+    hparams = HParams(
         ################################
         # Experiment Parameters        #
         ################################
@@ -26,9 +26,9 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
-        dataset_path='/media/creotiv/DATA/DATASETS/RUSL/',
-        training_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/train_ruslan_style.csv',
-        validation_files='/media/creotiv/DATA/DATASETS/RUSL/filelists/val_ruslan.csv',
+        dataset_path='/home/creotiv/work/ml/DATASETS/Natasha/',
+        training_files='/home/creotiv/work/ml/DATASETS/Natasha/filelists/train.csv',
+        validation_files='/home/creotiv/work/ml/DATASETS/Natasha/filelists/val.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################

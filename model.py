@@ -205,7 +205,7 @@ class Encoder(nn.Module):
         x = nn.utils.rnn.pack_padded_sequence(
             x, input_lengths, batch_first=True)
 
-        self.lstm.flatten_parameters()
+        # self.lstm.flatten_parameters()
         outputs, _ = self.lstm(x)
 
         outputs, _ = nn.utils.rnn.pad_packed_sequence(
@@ -220,7 +220,7 @@ class Encoder(nn.Module):
 
                 x = x.transpose(1, 2)
 
-                self.lstm.flatten_parameters()
+                # self.lstm.flatten_parameters()
                 outputs, _ = self.lstm(x)
         except RuntimeError as e:
             torch.cuda.empty_cache()
@@ -665,7 +665,7 @@ class Tacotron2(nn.Module):
 
         return outputs
 
-    def forward(self, inputs):
+    def forward(self, inputs, minimize=False):
         text_inputs, text_lengths, mels, max_len, output_lengths, *_ = inputs
         text_lengths, output_lengths = text_lengths.data, output_lengths.data
 
@@ -691,9 +691,14 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
-        return self.parse_output(
-            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
-            output_lengths)
+        if not minimize:
+            return self.parse_output(
+                [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
+                output_lengths)
+        else:
+            return self.parse_output(
+                [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
+                output_lengths)[2]
 
     def inference(self, inputs, seed=None, reference_mel=None, token_idx=None, scale=1.0):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)

@@ -127,7 +127,7 @@ def save_checkpoint(model, optimizer, learning_rate, iteration, filepath):
 
 
 def validate(model, criterion, valset, iteration, batch_size, n_gpus,
-             collate_fn, logger, distributed_run, rank):
+             collate_fn, logger=None, distributed_run=False, rank=1, minimize=False):
     """Handles all the validation scoring and printing"""
     model.eval()
     with torch.no_grad():
@@ -139,7 +139,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         val_loss = 0.0
         for i, batch in enumerate(val_loader):
             x, y = model.parse_batch(batch)
-            y_pred = model(x)
+            y_pred = model(x, minimize)
             _loss = criterion(y_pred, y)
             loss = sum(_loss)
             if distributed_run:
@@ -153,7 +153,8 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
     model.decoder.p_teacher_forcing = 1.0
     if rank == 0:
         print("Validation loss {}: {:9f}  ".format(iteration, val_loss))
-        logger.log_validation(val_loss, model, y, y_pred, iteration)
+        if logger:
+            logger.log_validation(val_loss, model, y, y_pred, iteration)
 
 def calculate_global_mean(data_loader, global_mean_npy):
     if global_mean_npy and os.path.exists(global_mean_npy):
