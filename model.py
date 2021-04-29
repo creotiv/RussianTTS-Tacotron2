@@ -10,6 +10,7 @@ import numpy as np
 import random
 from text.symbols import ctc_symbols
 from gst import GST, TPSEGST
+from vae import VAE
 
 
 class LocationLayer(nn.Module):
@@ -616,6 +617,7 @@ class Tacotron2(nn.Module):
         self.drop_frame_rate = hparams.drop_frame_rate
         self.use_mmi = hparams.use_mmi
         self.use_gst = hparams.use_gst
+        self.use_vae = hparams.use_vae
 
         if self.drop_frame_rate > 0.:
             # global mean is not used at inference.
@@ -627,10 +629,13 @@ class Tacotron2(nn.Module):
         else:
             self.mi = None
 
+        self.vae = None
         self.gst = None
         if self.use_gst:
             self.gst = GST(hparams)
             self.tpse_gst = TPSEGST(hparams)
+        if self.use_vae:
+            self.vae = VAE(hparams)
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -665,7 +670,7 @@ class Tacotron2(nn.Module):
 
         return outputs
 
-    def forward(self, inputs, minimize=False):
+    def forward(self, inputs):
         text_inputs, text_lengths, mels, max_len, output_lengths, *_ = inputs
         text_lengths, output_lengths = text_lengths.data, output_lengths.data
 
@@ -678,12 +683,19 @@ class Tacotron2(nn.Module):
         encoder_outputs = emb_text
 
         tpse_gst_outputs = None
-        gst_output = None
-        if self.gst is not None:
+        gst_outputs = None
+        vae_output = None
+        if self.use_gst:
             gst_outputs = self.gst(mels, output_lengths)
             emb_gst = gst_outputs.repeat(1, emb_text.size(1), 1)
             tpse_gst_outputs = self.tpse_gst(encoder_outputs)
-            encoder_outputs = torch.cat((emb_text, emb_gst), dim=2)
+            encoder_outputs = emb_text + emb_gst
+
+        if self.use_vae:
+            emb, mean, var = self.vae(mels, output_lengths)
+            vae_output = (mean, var)
+            emb_vae = emb.repeat(1, emb_text.size(1), 1)
+            encoder_outputs = emb_text + emb_vae
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
             encoder_outputs, mels, memory_lengths=text_lengths)
@@ -691,14 +703,9 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
-        if not minimize:
-            return self.parse_output(
-                [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
-                output_lengths)
-        else:
-            return self.parse_output(
-                [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs],
-                output_lengths)[2]
+        return self.parse_output(
+            [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs, vae_output],
+            output_lengths)
 
     def inference(self, inputs, seed=None, reference_mel=None, token_idx=None, scale=1.0):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)

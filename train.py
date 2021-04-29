@@ -127,7 +127,7 @@ def save_checkpoint(model, optimizer, learning_rate, iteration, filepath):
 
 
 def validate(model, criterion, valset, iteration, batch_size, n_gpus,
-             collate_fn, logger=None, distributed_run=False, rank=1, minimize=False):
+             collate_fn, logger=None, distributed_run=False, rank=1):
     """Handles all the validation scoring and printing"""
     model.eval()
     with torch.no_grad():
@@ -139,7 +139,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         val_loss = 0.0
         for i, batch in enumerate(val_loader):
             x, y = model.parse_batch(batch)
-            y_pred = model(x, minimize)
+            y_pred = model(x)
             _loss = criterion(y_pred, y)
             loss = sum(_loss)
             if distributed_run:
@@ -175,8 +175,8 @@ def calculate_global_mean(data_loader, global_mean_npy):
         np.save(global_mean_npy, global_mean)
     return to_gpu(global_mean)
 
-def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_mmi_layers, ignore_gst_layers, ignore_tsgst_layers, n_gpus,
-          rank, group_name, hparams):
+def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_vae_layers, ignore_gst_layers, ignore_tsgst_layers, n_gpus,
+          rank, group_name, zero_step, hparams):
     """Training and validation logging results to tensorboard and stdout
 
     Params
@@ -226,13 +226,13 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
     iteration = 0
     epoch_offset = 0
     if checkpoint_path is not None:
-        if warm_start or ignore_mmi_layers or ignore_gst_layers or ignore_tsgst_layers:
+        if warm_start or ignore_vae_layers or ignore_gst_layers or ignore_tsgst_layers:
             layers = []
             exclude = None
             if warm_start:
                 layers += hparams.ignore_layers
-            if ignore_mmi_layers:
-                layers += hparams.mmi_ignore_layers
+            if ignore_vae_layers:
+                exclude = 'vae.'
             if ignore_gst_layers:
                 exclude = 'gst.'
             if ignore_tsgst_layers:
@@ -246,6 +246,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 learning_rate = _learning_rate
             iteration += 1  # next iteration is iteration + 1
             epoch_offset = max(0, int(iteration / len(train_loader)))
+            
+    if zero_step:
+        iteration = 0
+        epoch_offset = 0
 
     criterion = Tacotron2Loss(hparams, iteration=iteration)
 
@@ -268,6 +272,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
             guide_loss = _loss[2]
             gate_loss = _loss[1]
             emb_loss = _loss[3]
+            vae_loss = _loss[4]
 
             if model.mi is not None:
                 # transpose to [b, T, dim]
@@ -296,6 +301,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 guide_loss = reduce_tensor(guide_loss.data, n_gpus).item()
                 gate_loss = reduce_tensor(gate_loss.data, n_gpus).item()
                 emb_loss = reduce_tensor(emb_loss.data, n_gpus).item()
+                vae_loss = reduce_tensor(vae_loss.data, n_gpus).item()
             else:
                 reduced_loss = loss.item()
                 taco_loss = taco_loss.item()
@@ -303,6 +309,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
                 guide_loss = guide_loss.item()
                 gate_loss = gate_loss.item()
                 emb_loss = emb_loss.item()
+                vae_loss = vae_loss.item()
 
 
             if hparams.distributed_run:
@@ -327,10 +334,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_m
 
             if not is_overflow and rank == 0:
                 duration = time.perf_counter() - start
-                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
-                    iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, grad_norm, duration))
+                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.4f} vae_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
+                    iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm, duration))
                 logger.log_training(
-                    reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, grad_norm,
+                    reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm,
                     learning_rate, duration, iteration)
 
             if not is_overflow and (iteration % hparams.iters_per_checkpoint == 0):
@@ -356,12 +363,14 @@ if __name__ == '__main__':
                         required=False, help='checkpoint path')
     parser.add_argument('--warm-start', action='store_true',
                         help='load model weights only, ignore specified layers')
-    parser.add_argument('--ignore-mmi-layers', action='store_true',
+    parser.add_argument('--ignore-vae-layers', action='store_true',
                         help='load model weights only, ignore specified layers')
     parser.add_argument('--ignore-gst-layers', action='store_true',
                         help='load model weights only, ignore specified layers')
     parser.add_argument('--ignore-tsgst-layers', action='store_true',
                         help='load model weights only, ignore specified layers')
+    parser.add_argument('--zero-step', action='store_true',
+                        help='set step to zero')
     parser.add_argument('--no-dga', action='store_true',
                         help='do not use DGA')
     parser.add_argument('--n_gpus', type=int, default=1,
@@ -383,9 +392,10 @@ if __name__ == '__main__':
     print("FP16 Run:", hparams.fp16_run)
     print("Dynamic Loss Scaling:", hparams.dynamic_loss_scaling)
     print("Use MMI:", hparams.use_mmi)
+    print("Use VAE:", hparams.use_vae)
     print("Distributed Run:", hparams.distributed_run)
     print("cuDNN Enabled:", hparams.cudnn_enabled)
     print("cuDNN Benchmark:", hparams.cudnn_benchmark)
     
     train(args.output_directory, args.log_directory, args.checkpoint_path,
-          args.warm_start, args.ignore_mmi_layers, args.ignore_gst_layers, args.ignore_tsgst_layers, args.n_gpus, args.rank, args.group_name, hparams)
+          args.warm_start, args.ignore_vae_layers, args.ignore_gst_layers, args.ignore_tsgst_layers, args.n_gpus, args.rank, args.group_name, args.zero_step, hparams)
