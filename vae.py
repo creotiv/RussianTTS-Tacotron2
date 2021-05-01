@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
+import numpy as np
 
 
 class ReferenceEncoder(nn.Module):
@@ -81,28 +82,60 @@ class VAE(nn.Module):
         mean = self.mean(reference)
         log_var = self.log_var(reference)
         std = torch.exp(log_var)
-        z = torch.randn(mean.shape[0], self.hp.vae_dim).to(reference.device)
+        z = torch.randn(mean.shape[0], self.hp.vae_dim, dtype=reference.dtype).to(reference.device)
         output = mean + z * std
         emb = self.emb(output)
         emb = torch.unsqueeze(emb, 1)
         return emb, mean, log_var
 
+    def inference(self, inputs, z_scale=None):
+        reference = self.encoder(inputs)
+
+        
+        if z_scale is not None:
+            z_scale = torch.tensor(z_scale, dtype=reference.dtype).to(reference.device)
+        else:
+            z_scale = torch.ones(self.hp.vae_dim, dtype=reference.dtype).to(reference.device)
+
+        mean = self.mean(reference)
+        log_var = self.log_var(reference)
+        std = torch.exp(log_var)
+        z = torch.randn(mean.shape[0], self.hp.vae_dim, dtype=reference.dtype).to(reference.device)
+        output = mean + z * std
+        emb = self.emb(output*z_scale)
+        emb = torch.unsqueeze(emb, 1)
+        return emb, mean, log_var
+        
+
 def vae_weight(hp, iteration):
-    if iteration < hp.vae_warming_up and iteration % 100 < 1:
-        w1 = torch.tensor(hp.vae_init_weights + iteration / 100 * hp.vae_weight_multiplier, dtype=torch.float32)
+    if iteration < hp.vae_anneal_func_warming_up and iteration % 100 < 1:
+        w1 = torch.tensor(hp.vae_anneal_func_init_weights + iteration / 100 * hp.vae_anneal_func_weight_multiplier, dtype=torch.float32)
     else:
         w1 = torch.tensor(0.0, dtype=torch.float32)
     
-    if iteration > hp.vae_warming_up and iteration % 400 < 1:
+    if iteration > hp.vae_anneal_func_warming_up and iteration % 400 < 1:
         w2 = torch.tensor(
-            hp.vae_init_weights \
-            + ((iteration-hp.vae_warming_up) / 400 * hp.vae_weight_multiplier \
-            + hp.vae_warming_up / 100 * hp.vae_weight_multiplier), \
+            hp.vae_anneal_func_init_weights \
+            + ((iteration-hp.vae_anneal_func_warming_up) / 400 * hp.vae_anneal_func_weight_multiplier \
+            + hp.vae_anneal_func_warming_up / 100 * hp.vae_anneal_func_weight_multiplier), \
             dtype=torch.float32)
     else:
         w2 = torch.tensor(0.0, dtype=torch.float32)
     
     return torch.maximum(w1, w2)
+
+def kl_anneal_function(hp, iteration):
+    if hp.vae_anneal_func == 'logistic':
+        return float(hp.vae_anneal_func_upper/(hp.vae_anneal_func_upper+np.exp(-hp.vae_anneal_func_k*(iteration-hp.vae_anneal_func_x0))))
+    elif hp.vae_anneal_func == 'linear':
+        if iteration > lag:
+            return min(hp.vae_anneal_func_upper, iteration/hp.vae_anneal_func_x0)
+        else:
+            return 0
+    elif hp.vae_anneal_func == 'constant':
+        return 0.001
+    elif hp.vae_anneal_func == 'bypaper':
+        return vae_weight(hp, iteration)
 
 if __name__ == '__main__':
     from hparams import create_hparams

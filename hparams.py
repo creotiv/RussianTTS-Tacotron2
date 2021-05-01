@@ -26,9 +26,9 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
-        dataset_path='/home/creotiv/work/ml/DATASETS/Natasha/',
-        training_files='/home/creotiv/work/ml/DATASETS/Natasha/filelists/train.csv',
-        validation_files='/home/creotiv/work/ml/DATASETS/Natasha/filelists/val.csv',
+        dataset_path='/home/gpu/work/ml/DATASETS/TTS/Natalia/',
+        training_files='/home/gpu/work/ml/DATASETS/TTS/Natalia/filelists/train_style.csv',
+        validation_files='/home/gpu/work/ml/DATASETS/TTS/Natalia/filelists/val_style.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################
@@ -86,10 +86,16 @@ def create_hparams(hparams_string=None, verbose=False):
         # VAE ======================
         use_vae=True,
         vae_dim=32,
-        vae_warming_up=15000,
-        vae_init_weights=0.001,
-	    vae_weight_multiplier=0.002,
         vae_embedding=512,
+        # KL weighting
+        vae_anneal_func='logistic', 
+        vae_anneal_func_lag=50000,
+        vae_anneal_func_k=0.0025,
+        vae_anneal_func_x0=10000,
+        vae_anneal_func_upper=0.2,
+        vae_anneal_func_warming_up=15000,
+        vae_anneal_func_init_weights=0.001,
+	    vae_anneal_func_weight_multiplier=0.002,
         #### Reference encoder
         ref_enc_filters=[32, 32, 64, 64, 128, 128],
         ref_enc_size=[3, 3],
@@ -97,13 +103,6 @@ def create_hparams(hparams_string=None, verbose=False):
         ref_enc_pad=[1, 1],
         ref_enc_gru_size=128,
         # ===========================
-
-        
-
-
-        
-        
-
         no_dga=False,
 
         ################################

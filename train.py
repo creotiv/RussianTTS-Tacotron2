@@ -334,7 +334,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
 
             if not is_overflow and rank == 0:
                 duration = time.perf_counter() - start
-                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.4f} vae_loss {:.4f} Grad Norm {:.4f} {:.2f}s/it".format(
+                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.4f} vae_loss {:.8f} Grad Norm {:.4f} {:.2f}s/it".format(
                     iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm, duration))
                 logger.log_training(
                     reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm,

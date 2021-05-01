@@ -707,12 +707,13 @@ class Tacotron2(nn.Module):
             [decoder_outputs, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, tpse_gst_outputs, gst_outputs, vae_output],
             output_lengths)
 
-    def inference(self, inputs, seed=None, reference_mel=None, token_idx=None, scale=1.0):
+    def inference(self, inputs, seed=None, reference_mel=None, token_idx=None, scale=1.0, z_scale=None):
         embedded_inputs = self.embedding(inputs).transpose(1, 2)
         emb_text = self.encoder.inference(embedded_inputs)
         encoder_outputs = emb_text
 
-        if self.gst is not None:
+        emb_gst = None
+        if self.use_gst:
             if reference_mel is not None:
                 emb_gst = self.gst(reference_mel)*scale
             elif token_idx is not None:
@@ -725,8 +726,13 @@ class Tacotron2(nn.Module):
 
             emb_gst = emb_gst.repeat(1, emb_text.size(1), 1)
          
-            encoder_outputs = torch.cat(
-                    (emb_text, emb_gst), dim=2)
+            encoder_outputs = emb_text + emb_gst
+
+        emb_vae = None
+        if self.use_vae and reference_mel is not None:
+            emb, mean, var = self.vae.inference(reference_mel,z_scale)
+            emb_vae = emb.repeat(1, emb_text.size(1), 1)
+            encoder_outputs = emb_text + emb_vae*scale
 
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs, seed=seed)
@@ -735,6 +741,6 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         outputs = self.parse_output(
-            [None, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, emb_gst])
+            [None, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, emb_gst or emb_vae])
 
         return outputs

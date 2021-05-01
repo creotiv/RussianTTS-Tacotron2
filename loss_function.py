@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from vae import vae_weight
+from vae import kl_anneal_function
 
 class Tacotron2Loss(nn.Module):
     def __init__(self, hparams, iteration=0):
@@ -42,10 +42,13 @@ class Tacotron2Loss(nn.Module):
                 torch.zeros_like(alignments_out)) * self.scale
     
         if vae:
+            # https://qr.ae/pGGj9U
+            # Use VQ-VAE https://medium.com/mlearning-ai/a-crash-course-on-vaes-vq-vaes-and-vae-gans-3fdcc40b059e
             mean, var = vae
             ki_loss = -0.5 * torch.sum(1 + var - torch.pow(mean, 2) - torch.exp(var))
-            vae_loss_weight = vae_weight(self.hparams, self.iteration)
-            vae_loss = ki_loss * vae_loss_weight
+            vae_loss_weight = kl_anneal_function(self.hparams, self.iteration)
+            vae_loss = ki_loss * vae_loss_weight*500
+            print(ki_loss, vae_loss_weight, vae_loss)
 
         self.scale *= self.guide_decay
         self.iteration += 1
