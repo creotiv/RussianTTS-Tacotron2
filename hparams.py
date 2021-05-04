@@ -26,9 +26,9 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
-        dataset_path='/home/gpu/work/ml/DATASETS/TTS/Natalia/',
-        training_files='/home/gpu/work/ml/DATASETS/TTS/Natalia/filelists/train_style.csv',
-        validation_files='/home/gpu/work/ml/DATASETS/TTS/Natalia/filelists/val_style.csv',
+        dataset_path='/home/creotiv/work/tts/Natasha/',
+        training_files='/home/creotiv/work/tts/Natasha/filelists/train_style.csv',
+        validation_files='/home/creotiv/work/tts/Natasha/filelists/val.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################
@@ -88,11 +88,15 @@ def create_hparams(hparams_string=None, verbose=False):
         vae_dim=32,
         vae_embedding=512,
         # KL weighting
-        vae_anneal_func='logistic', 
+        vae_anneal_func='constant',
+        vae_anneal_func_constant=1.0, 
+        # linear
         vae_anneal_func_lag=50000,
+        # logistic
         vae_anneal_func_k=0.0025,
-        vae_anneal_func_x0=10000,
+        vae_anneal_func_x0=30000,
         vae_anneal_func_upper=0.2,
+        # bypaper
         vae_anneal_func_warming_up=15000,
         vae_anneal_func_init_weights=0.001,
 	    vae_anneal_func_weight_multiplier=0.002,
@@ -101,7 +105,7 @@ def create_hparams(hparams_string=None, verbose=False):
         ref_enc_size=[3, 3],
         ref_enc_strides=[2, 2],
         ref_enc_pad=[1, 1],
-        ref_enc_gru_size=128,
+        ref_enc_gru_size=512 // 2,
         # ===========================
         no_dga=False,
 
@@ -112,7 +116,7 @@ def create_hparams(hparams_string=None, verbose=False):
         learning_rate=1e-3,
         weight_decay=1e-6,
         grad_clip_thresh=1.0,
-        batch_size=8,
+        batch_size=16,
         mask_padding=True,  # set model's padded outputs to padded values
 
         ################################

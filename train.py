@@ -140,7 +140,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
         for i, batch in enumerate(val_loader):
             x, y = model.parse_batch(batch)
             y_pred = model(x)
-            _loss = criterion(y_pred, y)
+            _loss, _kl = criterion(y_pred, y)
             loss = sum(_loss)
             if distributed_run:
                 reduced_val_loss = reduce_tensor(loss.data, n_gpus).item()
@@ -267,7 +267,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
             x, y = model.parse_batch(batch)
             y_pred = model(x)
 
-            _loss = criterion(y_pred, y)
+            _loss, _kl = criterion(y_pred, y)
             loss = sum(_loss)
             guide_loss = _loss[2]
             gate_loss = _loss[1]
@@ -338,7 +338,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
                     iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm, duration))
                 logger.log_training(
                     reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm,
-                    learning_rate, duration, iteration)
+                    learning_rate, duration, _kl, iteration)
 
             if not is_overflow and (iteration % hparams.iters_per_checkpoint == 0):
                 validate(model, criterion, valset, iteration,
