@@ -26,9 +26,9 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
-        dataset_path='/home/creotiv/work/ml/DATASETS/Natasha/',
-        training_files='/home/creotiv/work/ml/DATASETS/Natasha/filelists/train.csv',
-        validation_files='/home/creotiv/work/ml/DATASETS/Natasha/filelists/val.csv',
+        dataset_path='/home/creotiv/work/tts/Natasha/',
+        training_files='/home/creotiv/work/tts/Natasha/filelists/train_style.csv',
+        validation_files='/home/creotiv/work/tts/Natasha/filelists/val.csv',
         text_cleaners=['transliteration_cleaners_with_stress'],
 
         ################################
@@ -100,7 +100,7 @@ def create_hparams(hparams_string=None, verbose=False):
         learning_rate=1e-3,
         weight_decay=1e-6,
         grad_clip_thresh=1.0,
-        batch_size=8,
+        batch_size=16,
         mask_padding=True,  # set model's padded outputs to padded values
 
         ################################
