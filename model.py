@@ -689,13 +689,15 @@ class Tacotron2(nn.Module):
             gst_outputs = self.gst(mels, output_lengths)
             emb_gst = gst_outputs.repeat(1, emb_text.size(1), 1)
             tpse_gst_outputs = self.tpse_gst(encoder_outputs)
-            encoder_outputs = emb_text + emb_gst
+            encoder_outputs = torch.cat((emb_text, emb_gst), dim=2)
+            # encoder_outputs = emb_text + emb_gst
 
         if self.use_vae:
             emb, mean, var = self.vae(mels, output_lengths)
             vae_output = (mean, var)
             emb_vae = emb.repeat(1, emb_text.size(1), 1)
-            encoder_outputs = emb_text + emb_vae
+            encoder_outputs = torch.cat((emb_text, emb_vae), dim=2)
+            # encoder_outputs = emb_text + emb_vae
 
         mel_outputs, gate_outputs, alignments, decoder_outputs = self.decoder(
             encoder_outputs, mels, memory_lengths=text_lengths)
@@ -725,8 +727,8 @@ class Tacotron2(nn.Module):
                 emb_gst = self.tpse_gst(emb_text)*scale
 
             emb_gst = emb_gst.repeat(1, emb_text.size(1), 1)
-         
-            encoder_outputs = emb_text + emb_gst
+            encoder_outputs = torch.cat((emb_text, emb_gst), dim=2)
+            # encoder_outputs = emb_text + emb_gst
 
         emb_vae = None
         if self.use_vae and reference_mel is not None:
@@ -741,6 +743,6 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         outputs = self.parse_output(
-            [None, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, emb_gst or emb_vae])
+            [None, mel_outputs, mel_outputs_postnet, gate_outputs, alignments, emb_gst ])
 
         return outputs

@@ -56,7 +56,7 @@ def prepare_dataloaders(hparams):
         train_sampler = None
         shuffle = True
 
-    train_loader = DataLoader(trainset, num_workers=1, shuffle=shuffle,
+    train_loader = DataLoader(trainset, num_workers=0, shuffle=shuffle,
                               sampler=train_sampler,
                               batch_size=hparams.batch_size, pin_memory=False,
                               drop_last=True, collate_fn=collate_fn)
@@ -272,7 +272,6 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
             guide_loss = _loss[2]
             gate_loss = _loss[1]
             emb_loss = _loss[3]
-            vae_loss = _loss[4]
 
             if model.mi is not None:
                 # transpose to [b, T, dim]
@@ -301,7 +300,6 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
                 guide_loss = reduce_tensor(guide_loss.data, n_gpus).item()
                 gate_loss = reduce_tensor(gate_loss.data, n_gpus).item()
                 emb_loss = reduce_tensor(emb_loss.data, n_gpus).item()
-                vae_loss = reduce_tensor(vae_loss.data, n_gpus).item()
             else:
                 reduced_loss = loss.item()
                 taco_loss = taco_loss.item()
@@ -309,7 +307,6 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
                 guide_loss = guide_loss.item()
                 gate_loss = gate_loss.item()
                 emb_loss = emb_loss.item()
-                vae_loss = vae_loss.item()
 
 
             if hparams.distributed_run:
@@ -334,10 +331,10 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, ignore_v
 
             if not is_overflow and rank == 0:
                 duration = time.perf_counter() - start
-                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.4f} vae_loss {:.8f} Grad Norm {:.4f} {:.2f}s/it".format(
-                    iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm, duration))
+                print("Train loss {} {:.4f} mi_loss {:.4f} guide_loss {:.4f} gate_loss {:.4f} emb_loss {:.8f}  Grad Norm {:.4f} {:.2f}s/it".format(
+                    iteration, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, grad_norm, duration))
                 logger.log_training(
-                    reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, vae_loss, grad_norm,
+                    reduced_loss, taco_loss, mi_loss, guide_loss, gate_loss, emb_loss, grad_norm,
                     learning_rate, duration, _kl, iteration)
 
             if not is_overflow and (iteration % hparams.iters_per_checkpoint == 0):

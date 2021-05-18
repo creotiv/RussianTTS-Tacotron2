@@ -78,23 +78,23 @@ def create_hparams(hparams_string=None, verbose=False):
         postnet_n_convolutions=5,
 
         # GST ======================
-        use_gst=False,
+        use_gst=True,
         #### Style Token Layer
-        token_embedding_size=512,
+        token_embedding_size=256,
         token_num=10,
         num_heads=8,
         # VAE ======================
-        use_vae=True,
+        use_vae=False,
         vae_dim=32,
         vae_embedding=512,
         # KL weighting
-        vae_anneal_func='constant',
-        vae_anneal_func_constant=1.0, 
+        vae_anneal_func='logistic',
+        vae_anneal_func_constant=0.001, 
         # linear
         vae_anneal_func_lag=50000,
         # logistic
         vae_anneal_func_k=0.0025,
-        vae_anneal_func_x0=30000,
+        vae_anneal_func_x0=10000,
         vae_anneal_func_upper=0.2,
         # bypaper
         vae_anneal_func_warming_up=15000,
@@ -105,7 +105,7 @@ def create_hparams(hparams_string=None, verbose=False):
         ref_enc_size=[3, 3],
         ref_enc_strides=[2, 2],
         ref_enc_pad=[1, 1],
-        ref_enc_gru_size=512 // 2,
+        ref_enc_gru_size=256 // 2,
         # ===========================
         no_dga=False,
 
@@ -118,7 +118,7 @@ def create_hparams(hparams_string=None, verbose=False):
         grad_clip_thresh=1.0,
         batch_size=16,
         mask_padding=True,  # set model's padded outputs to padded values
-
+        augment=True, # pitch & speed
         ################################
         # FINE-TUNE #
         ################################

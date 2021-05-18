@@ -164,7 +164,7 @@ class VAE(nn.Module):
         std = torch.exp(0.5 * log_var)
         eps = torch.randn_like(std)
         z = eps.mul(std).add_(mean)
-        emb = self.emb(mean)
+        emb = self.emb(z)
         emb = torch.unsqueeze(emb, 1)
 
         return emb, mean, None

@@ -8,6 +8,15 @@ import layers
 from utils import load_wav_to_torch, load_filepaths_and_text, guide_attention_fast
 from text import text_to_sequence, sequence_to_ctc_sequence
 
+from audiomentations import Compose, TimeStretch, PitchShift
+from scipy.io.wavfile import read
+from librosa.effects import trim
+
+augment = Compose([
+    TimeStretch(min_rate=1.0, max_rate=1.5, p=0.5),
+    PitchShift(min_semitones=-4, max_semitones=4, p=0.5),
+])
+
 
 class TextMelLoader(torch.utils.data.Dataset):
     """
@@ -21,6 +30,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         self.max_wav_value = hparams.max_wav_value
         self.sampling_rate = hparams.sampling_rate
         self.ds_path = hparams.dataset_path
+        self.augment = augment if hparams.augment else None
         self.load_mel_from_disk = hparams.load_mel_from_disk
         self.stft = layers.TacotronSTFT(
             hparams.filter_length, hparams.hop_length, hparams.win_length,
@@ -49,22 +59,27 @@ class TextMelLoader(torch.utils.data.Dataset):
         return (text, ctc_text, mel, guide_mask)
 
     def get_mel(self, filename):
-        if not os.path.exists(filename+'.npy'):
-            audio, sampling_rate = load_wav_to_torch(filename)
-            if sampling_rate != self.stft.sampling_rate:
-                raise ValueError("{} {} SR doesn't match target {} SR".format(
-                    sampling_rate, self.stft.sampling_rate))
-            audio_norm = audio / self.max_wav_value
-            audio_norm = audio_norm.unsqueeze(0)
-            audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)
-            melspec = self.stft.mel_spectrogram(audio_norm)
-            melspec = torch.squeeze(melspec, 0)
-            np.save(filename+'.npy',melspec)
-        else:
-            melspec = torch.from_numpy(np.load(filename+'.npy'))
-            assert melspec.size(0) == self.stft.n_mel_channels, (
-                'Mel dimension mismatch: given {}, expected {}'.format(
-                    melspec.size(0), self.stft.n_mel_channels))
+        # if not os.path.exists(filename+'.npy'):
+        sampling_rate, audio = read(filename)
+        audio = audio.astype(np.float32)
+        if self.augment:
+            audio, _ = trim(self.augment(samples=audio, sample_rate=sampling_rate))
+        audio = torch.FloatTensor(audio)
+
+        if sampling_rate != self.stft.sampling_rate:
+            raise ValueError("{} {} SR doesn't match target {} SR".format(
+                sampling_rate, self.stft.sampling_rate))
+        audio_norm = audio / max(self.max_wav_value, torch.max(torch.abs(audio)).item())
+        audio_norm = audio_norm.unsqueeze(0)
+        audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)
+        melspec = self.stft.mel_spectrogram(audio_norm)
+        melspec = torch.squeeze(melspec, 0)
+        # np.save(filename+'.npy',melspec)
+        # else:
+        #     melspec = torch.from_numpy(np.load(filename+'.npy'))
+        #     assert melspec.size(0) == self.stft.n_mel_channels, (
+        #         'Mel dimension mismatch: given {}, expected {}'.format(
+        #             melspec.size(0), self.stft.n_mel_channels))
 
         return melspec
 
