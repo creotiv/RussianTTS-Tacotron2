@@ -1,9 +1,5 @@
-import os
-import sys
 import numpy as np
-import re
 from collections import defaultdict
-import re
 
 class Emphasizer:
     def __init__(self, path):
@@ -11,13 +7,16 @@ class Emphasizer:
             self.db = np.load(path, allow_pickle=True).item()
         else:
             self.db = {}
+            self.parts = {}
             self.duplicates = defaultdict(list)
             with open(path) as fp:
                 for l in fp:
                     t,e = l.strip().split('|')
                     ex = self.db.get(t)
                     if '+' not in e.lower():
-                        print(e)
+                        raise Exception("No stress found in:%s" % t)
+                    idx = e.rfind('+')
+                    self.parts[t[0:idx+1]] = (e[0:idx+2], len(e))
                     if not ex:
                         self.db[t] = e
                     else:
@@ -28,12 +27,21 @@ class Emphasizer:
                                 self.duplicates[t].append(e)
             # print(self.duplicates,len(self.duplicates))
 
-    def find(self, name, tries=4):
+    # TODO: handle different stress position for different root of the word
+    def find(self, name, tries=50):
         l = len(name)
+        _name = name.replace('э','е').replace('ё','е')
+        out = []
         for i in range(tries):
-            r = self.db.get(name[:l-i])
-            if r:
-                return r + name[l-i:]
+            x = self.parts.get(_name[:l-i])
+            if x:
+                r, loss = x
+                loss -= len(name)
+                out.append((name[0:r.rfind('+')] + '+' +name[r.rfind('+'):], abs(loss)))
+        if len(out) > 1:
+            print(out)
+        if out:
+            return out[0][0]
         return name
 
     def add_stress(self, text):
@@ -48,16 +56,8 @@ class Emphasizer:
         return ' '.join(res)
 
 if __name__ == '__main__':
+    import time
     r = Emphasizer('ru_emphasize.dict')
-    print(r.add_stress('привет мама'))
-
-    # w = open('a1.txt','w')
-    # err = open('err.txt','w')
-    # add = open('add.txt','w')
-    # with open('ru_emphasize.dict') as fp:
-    #     for l in fp:
-    #         t,e = l.strip().split('|')
-    #         idx = e.index('+')
-    #         e = e.replace('+','')
-    #         e = e[:idx-1]+'+'+e[idx-1:]
-    #         w.write('%s|%s\n' % (t,e))
+    st = time.perf_counter()
+    print(r.add_stress('В Минздраве отметили, что вакцинация второй дозой тех, кого первой дозой прививали мобильные бригады, проводится по такому же алгоритму, что и вакцинация первой дозой. Списки, сформированные во время первой прививки, используются для получения следующей дозы.'.lower()))
+    print(time.perf_counter() - st)
